@@ -4,7 +4,7 @@ from keep_alive import keep_alive
 
 import google.generativeai as genai
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-model = genai.GenerativeModel('gemini-2.0-flash-lite-latest')
+model = genai.GenerativeModel('gemini-2.0-flash-latest')
 chat = model.start_chat(history=[])
 
 ### discord initial

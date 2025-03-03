@@ -4,7 +4,7 @@ from keep_alive import keep_alive
 
 import google.generativeai as genai
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-model = genai.GenerativeModel('gemini-1.5-flash-latest')
+model = genai.GenerativeModel('gemini-2.0-flash-lite-latest')
 chat = model.start_chat(history=[])
 
 ### discord initial
@@ -26,6 +26,11 @@ async def on_message(message):
   if message.author == discord.user:
     return
   if message.author.bot == True:
+    return
+  if all([
+    message.channel.name != "ai試験場",
+    discord.user.mentioned_in(message) == False
+  ]):
     return
 
   await message.channel.send("---")

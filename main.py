@@ -37,7 +37,7 @@ async def on_message(message):
   for chunk in splitted_text:
     await message.channel.send(chunk)
 
-discord.run(os.environ['BOT_KEY'])t
+discord.run(os.environ['BOT_KEY'])
 '''
 client = discord.Client(intents=discord.Intents.default())
 

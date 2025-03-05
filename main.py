@@ -28,11 +28,7 @@ sys_instruct = """
 
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 model = genai.GenerativeModel("gemini-2.0-flash")
-chat = model.start_chat(history=[
-    {'role': 'user',
-      'parts': [sys_instruct]
-    }
-])
+chat = model.start_chat(history=[{"role": "user", "parts": [sys_instruct]}])
 
 ### discord initial
 intents = discord.Intents.default()
@@ -52,6 +48,7 @@ async def on_ready():
 
 @discord.event
 async def on_message(message):
+    global chat
     if message.author == discord.user:
         return
     if message.author.bot == True:
@@ -64,30 +61,25 @@ async def on_message(message):
     ):
         return
 
-    await message.channel.send("---")
     input_text = message.content
+
+    if input_text.endswith("リセット"):
+        chat = None
+        chat = model.start_chat(history=[{"role": "user", "parts": [sys_instruct]}])
+        await message.channel.send("履歴をリセットしたじゅう！")
+        return
+
+    if input_text.startswith("カスタム"):
+        input_text = input_text.replace("カスタム", "")
+        chat = model.start_chat(history=[{"role": "user", "parts": [input_text]}])
+        await message.channel.send("カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！")
+        return
 
     answer = chat.send_message(input_text)
 
     splitted_text = split_text(answer.text)
     for chunk in splitted_text:
         await message.channel.send(chunk)
-
-
-"""
-discord.run(os.environ['BOT_KEY'])
-
-@client.event
-async def on_ready():
-    print('ログインしました')
-
-@client.event
-async def on_message(message):
-    emoji ="👍"
-    await message.add_reaction(emoji)
-client = discord.Client(intents=discord.Intents.default())
-"""
-
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 

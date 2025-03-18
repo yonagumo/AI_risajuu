@@ -27,7 +27,7 @@ sys_instruct = """
 """
 
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-model = genai.GenerativeModel("gemini-2.0-flash")
+model = genai.GenerativeModel("gemini-2.0-flash-thinking-exp")
 chat = model.start_chat(history=[{"role": "user", "parts": [sys_instruct]}])
 
 ### discord initial

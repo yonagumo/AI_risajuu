@@ -28,15 +28,7 @@ sys_instruct = """
 
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 model = genai.GenerativeModel("gemini-2.0-flash-thinking-exp")
-chat = model.start_chat(
-    history=[{"role": "user", "parts": [sys_instruct]}],
-    safety_settings=[
-        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-    ],
-)
+chat = model.start_chat(history=[{"role": "user", "parts": [sys_instruct]}])
 
 ### discord initial
 intents = discord.Intents.default()

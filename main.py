@@ -28,7 +28,15 @@ sys_instruct = """
 
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 model = genai.GenerativeModel("gemini-2.0-flash-thinking-exp")
-chat = model.start_chat(history=[{"role": "user", "parts": [sys_instruct]}])
+chat = model.start_chat(
+    history=[{"role": "user", "parts": [sys_instruct]}],
+    safety_settings=[
+        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+    ],
+)
 
 ### discord initial
 intents = discord.Intents.default()
@@ -72,7 +80,9 @@ async def on_message(message):
     if input_text.startswith("カスタム"):
         input_text = input_text.replace("カスタム", "")
         chat = model.start_chat(history=[{"role": "user", "parts": [input_text]}])
-        await message.channel.send("カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！")
+        await message.channel.send(
+            "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
+        )
         return
 
     answer = chat.send_message(input_text)
@@ -80,6 +90,7 @@ async def on_message(message):
     splitted_text = split_text(answer.text)
     for chunk in splitted_text:
         await message.channel.send(chunk)
+
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 

@@ -2,8 +2,7 @@ import discord
 import os
 from keep_alive import keep_alive
 
-from google import genai
-from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
+import google.generativai as genai
 
 sys_instruct = """
 # 指示
@@ -33,7 +32,8 @@ risajuu_image = [
 
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 search_tool = {'google_search': {}}
-chat = client.chats.create(
+model = genai.GenerativeModel("gemini-2.0-flash-thinking-exp")
+chat = model.start_chat(
     model = "gemini-2.0-flash-thinking-exp",
     system_instruction = sys_instruct,
     tools = search_tool

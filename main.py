@@ -2,7 +2,7 @@ import discord
 import os
 from keep_alive import keep_alive
 
-import google.generativeai as genai
+from google import genai
 
 sys_instruct = """
 # 指示

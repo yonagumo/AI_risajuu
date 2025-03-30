@@ -34,7 +34,6 @@ genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 search_tool = {'google_search': {}}
 model = genai.GenerativeModel("gemini-2.0-flash-thinking-exp")
 chat = model.start_chat(
-    model = "gemini-2.0-flash-thinking-exp",
     system_instruction = sys_instruct,
     tools = search_tool
 )

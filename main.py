@@ -30,10 +30,11 @@ risajuu_image = [
 
 ]
 
-genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 search_tool = {'google_search': {}}
 model = genai.GenerativeModel("gemini-2.0-flash-thinking-exp")
-chat = model.start_chat(
+chat = client.start_chat(
+    model = "gemini-2.0-flash-thinking-exp",
     system_instruction = sys_instruct,
     tools = search_tool
 )
@@ -73,10 +74,16 @@ async def on_message(message):
 
     if input_text.endswith("リセット"):
         chat = None
-        chat = model.start_chat(history=[{"role": "user", "parts": [sys_instruct]}])
+        #chat = model.start_chat(history=[{"role": "user", "parts": [sys_instruct]}])
+        chat = model.start_chat(
+            model="gemini-2.0-flash-thinking-exp",
+            system_instruction=sys_instruct,
+            tools=search_tool,
+        )
         await message.channel.send("履歴をリセットしたじゅう！")
         return
 
+'''
     if input_text.startswith("カスタム"):
         input_text = input_text.replace("カスタム", "")
         chat = None
@@ -85,6 +92,8 @@ async def on_message(message):
             "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
         )
         return
+'''
+
     
     if input_text.startswith("あ、これはりさじゅう反応しないでね"):
         return

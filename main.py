@@ -3,7 +3,8 @@ import os
 from keep_alive import keep_alive
 
 from google import genai
-from google.genai import types, Tool, GenerateContentConfig, GoogleSearch
+from google.genai import types
+from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
 
 
 origin_sys_instruct = """

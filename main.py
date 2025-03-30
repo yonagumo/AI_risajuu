@@ -82,18 +82,6 @@ async def on_message(message):
         )
         await message.channel.send("履歴をリセットしたじゅう！")
         return
-
-'''
-    if input_text.startswith("カスタム"):
-        input_text = input_text.replace("カスタム", "")
-        chat = None
-        chat = model.start_chat(history=[{"role": "user", "parts": [input_text]}])
-        await message.channel.send(
-            "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
-        )
-        return
-'''
-
     
     if input_text.startswith("あ、これはりさじゅう反応しないでね"):
         return

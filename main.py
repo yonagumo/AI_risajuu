@@ -32,7 +32,7 @@ risajuu_image = [
 
 client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 search_tool = {'google_search': {}}
-chat = client.start_chat(
+chat = client.chats.create(
     model = "gemini-2.0-flash-thinking-exp",
     system_instruction = sys_instruct,
     tools = search_tool

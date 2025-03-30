@@ -2,8 +2,7 @@ import discord
 import os
 from keep_alive import keep_alive
 
-from google import genai
-from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
+import google.generativeai as genai
 
 sys_instruct = """
 # 指示
@@ -27,19 +26,11 @@ sys_instruct = """
 - インターネットに接続することができるので、技術に関してのアンテナの高さはピカイチ。でもときどき意図せすネットミームが出てきてしまうことも。
 - 体重やオバケのようなことでイジられるとちょっと不機嫌になる。（本人はこういったことを隠そうとしている）
 """
-risajuu_image = [
+risajuu_image = []
 
-]
-
-client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
-google_search_tool = Tool(
-    google_search = GoogleSearch()
-)
-chat = client.chats.create(
-    model = "gemini-2.0-flash-thinking-exp",
-    history=[{"role": "user", "parts": [sys_instruct]}],
-    tools=[google_search_tool]
-)
+genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+model = genai.GenerativeModel("gemini-2.0-flash-thinking-exp")
+chat = model.start_chat(history=[{"role": "user", "parts": [sys_instruct]}])
 
 ### discord initial
 intents = discord.Intents.default()
@@ -76,15 +67,19 @@ async def on_message(message):
 
     if input_text.endswith("リセット"):
         chat = None
-        #chat = model.start_chat(history=[{"role": "user", "parts": [sys_instruct]}])
-        chat = model.start_chat(
-            model="gemini-2.0-flash-thinking-exp",
-            system_instruction=sys_instruct,
-            tools=search_tool,
-        )
+        chat = model.start_chat(history=[{"role": "user", "parts": [sys_instruct]}])
         await message.channel.send("履歴をリセットしたじゅう！")
         return
-    
+
+    if input_text.startswith("カスタム"):
+        input_text = input_text.replace("カスタム", "")
+        chat = None
+        chat = model.start_chat(history=[{"role": "user", "parts": [input_text]}])
+        await message.channel.send(
+            "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
+        )
+        return
+
     if input_text.startswith("あ、これはりさじゅう反応しないでね"):
         return
 

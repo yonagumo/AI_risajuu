@@ -70,8 +70,12 @@ async def on_message(message):
 
     input_text = message.content
 
+    if input_text.startswith("あ、これはりさじゅう反応しないでね"):
+        return
+
     if input_text.endswith("リセット"):
         chat = None
+        sys_instruct = origin_sys_instruct
         chat = client.chats.create(model="gemini-2.0-flash")
         chat.send_message(sys_instruct)
         await message.channel.send("履歴をリセットしたじゅう！")
@@ -85,9 +89,6 @@ async def on_message(message):
         await message.channel.send(
             "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
         )
-        return
-
-    if input_text.startswith("あ、これはりさじゅう反応しないでね"):
         return
 
     if input_text.endswith("カンニングしていいよ"):

@@ -93,7 +93,7 @@ async def on_message(message):
     if input_text.endswith("カンニングしていいよ"):
         response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=input_text,
+            contents=str(input_text),
             config=GenerateContentConfig(
                 system_instruction=sys_instruct,
                 tools=[google_search_tool],

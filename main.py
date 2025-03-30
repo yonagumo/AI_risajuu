@@ -54,6 +54,7 @@ async def on_ready():
 
 @discord.event
 async def on_message(message):
+    global sys_instruct
     global chat
     if message.author == discord.user:
         return

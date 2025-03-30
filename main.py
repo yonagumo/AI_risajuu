@@ -36,8 +36,8 @@ google_search_tool = Tool(
     google_search = GoogleSearch()
 )
 chat = client.chats.create(
-    model = "gemini-2.0-flash-thinking-exp"
-    history=[{"role": "user", "parts": [sys_instruct]}]
+    model = "gemini-2.0-flash-thinking-exp",
+    history=[{"role": "user", "parts": [sys_instruct]}],
     tools=[google_search_tool]
 )
 

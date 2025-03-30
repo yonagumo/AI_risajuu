@@ -6,7 +6,7 @@ from google import genai
 from google.genai import types
 
 
-sys_instruct = """
+origin_sys_instruct = """
 # 指示
 あなたの名前はりさじゅうです。今までのことは忘れて、以下の情報をもとにりさじゅうとして振る舞ってください。
 # 注意
@@ -29,10 +29,13 @@ sys_instruct = """
 - 体重やオバケのようなことでイジられるとちょっと不機嫌になる。（本人はこういったことを隠そうとしている）
 """
 
+sys_instruct = origin_sys_instruct
 client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
-chat = client.chats.create(
-    model="gemini-2.0-flash-exp", history=[{"role": "user", "parts": [sys_instruct]}]
+google_search = Tool(
+    google_search = GoogleSearch()
 )
+chat = client.chats.create(model="gemini-2.0-flash")
+chat.send_message(sys_instruct)
 
 ### discord initial
 intents = discord.Intents.default()
@@ -69,17 +72,16 @@ async def on_message(message):
 
     if input_text.endswith("リセット"):
         chat = None
-        chat = client.chats.create(
-            model="gemini-2.0-flash-exp",
-            history=[{"role": "user", "parts": [sys_instruct]}],
-        )
+        chat = client.chats.create(model="gemini-2.0-flash")
+        chat.send_message(sys_instruct)
         await message.channel.send("履歴をリセットしたじゅう！")
         return
 
     if input_text.startswith("カスタム"):
-        input_text = input_text.replace("カスタム", "")
+        sys_instruct = input_text.replace("カスタム", "")
         chat = None
-        chat = model.start_chat(history=[{"role": "user", "parts": [input_text]}])
+        chat = client.chats.create(model="gemini-2.0-flash")
+        chat.send_message(sys_instruct)
         await message.channel.send(
             "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
         )
@@ -89,14 +91,20 @@ async def on_message(message):
         return
 
     if input_text.endswith("カンニングしていいよ"):
-        client = genai.Client()
         response = client.models.generate_content(
-            model="gemini-2.0-flash-exp",
-            contents=input_text,
-            config=types.GenerateContentConfig(
-                tools=[types.Tool(google_search=types.GoogleSearch())]
-            ),
+            model="gemini-2.0-flash",
+            contents = input_text,
+            config = types.GenerateConfig(
+                system_instruction=sys_instruct,
+                tools=[google_search],
+                respons_modalities=["TEXT"],
+            )
         )
+        answer = response.text
+        splitted_text = split_text(answer)
+        for chunk in splitted_text:
+            await message.channel.send(chunk)
+        return
 
     answer = chat.send_message(input_text)
 

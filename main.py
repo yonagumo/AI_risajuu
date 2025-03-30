@@ -97,7 +97,7 @@ async def on_message(message):
             config=GenerateContentConfig(
                 system_instruction=sys_instruct,
                 tools=[google_search_tool],
-                respons_modalities=["TEXT"],
+                response_modalities=["TEXT"],
             ),
         )
         answer = response.text

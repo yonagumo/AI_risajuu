@@ -26,10 +26,14 @@ sys_instruct = """
 - インターネットに接続することができるので、技術に関してのアンテナの高さはピカイチ。でもときどき意図せすネットミームが出てきてしまうことも。
 - 体重やオバケのようなことでイジられるとちょっと不機嫌になる。（本人はこういったことを隠そうとしている）
 """
+risajuu_image = [
+
+]
 
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 model = genai.GenerativeModel("gemini-2.0-flash-thinking-exp")
-chat = model.start_chat(history=[{"role": "user", "parts": [sys_instruct]}])
+search_tool = {'google_search': {}}
+chat = model.start_chat(history=[{"role": "user", "parts": [sys_instruct]}], config={'tools': [search_tool]})
 
 ### discord initial
 intents = discord.Intents.default()
@@ -77,6 +81,9 @@ async def on_message(message):
         await message.channel.send(
             "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
         )
+        return
+    
+    if input_text.startswith("あ、これはりさじゅう反応しないでね"):
         return
 
     answer = chat.send_message(input_text)

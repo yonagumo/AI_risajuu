@@ -30,7 +30,9 @@ sys_instruct = """
 """
 
 client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
-chat = client.chats.create(history=[{"role": "user", "parts": [sys_instruct]}])
+chat = client.chats.create(
+    model="gemini-2.0-flash-exp", history=[{"role": "user", "parts": [sys_instruct]}]
+)
 
 ### discord initial
 intents = discord.Intents.default()
@@ -67,7 +69,10 @@ async def on_message(message):
 
     if input_text.endswith("リセット"):
         chat = None
-        chat = model.start_chat(history=[{"role": "user", "parts": [sys_instruct]}])
+        chat = client.chats.create(
+            model="gemini-2.0-flash-exp",
+            history=[{"role": "user", "parts": [sys_instruct]}],
+        )
         await message.channel.send("履歴をリセットしたじゅう！")
         return
 
@@ -86,8 +91,8 @@ async def on_message(message):
     if input_text.endswith("カンニングしていいよ"):
         client = genai.Client()
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents= input_text,
+            model="gemini-2.0-flash-exp",
+            contents=input_text,
             config=types.GenerateContentConfig(
                 tools=[types.Tool(google_search=types.GoogleSearch())]
             ),

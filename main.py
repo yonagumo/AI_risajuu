@@ -2,7 +2,9 @@ import discord
 import os
 from keep_alive import keep_alive
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
+
 
 sys_instruct = """
 # 指示
@@ -26,7 +28,6 @@ sys_instruct = """
 - インターネットに接続することができるので、技術に関してのアンテナの高さはピカイチ。でもときどき意図せすネットミームが出てきてしまうことも。
 - 体重やオバケのようなことでイジられるとちょっと不機嫌になる。（本人はこういったことを隠そうとしている）
 """
-risajuu_image = []
 
 genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 model = genai.GenerativeModel("gemini-2.0-flash-thinking-exp")
@@ -82,6 +83,16 @@ async def on_message(message):
 
     if input_text.startswith("あ、これはりさじゅう反応しないでね"):
         return
+
+    if input_text.endswith("カンニングしていいよ"):
+        client = genai.Client()
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents= input_text,
+            config=types.GenerateContentConfig(
+                tools=[types.Tool(google_search=types.GoogleSearch())]
+            ),
+        )
 
     answer = chat.send_message(input_text)
 

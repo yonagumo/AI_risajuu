@@ -33,8 +33,11 @@ risajuu_image = [
 client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 search_tool = {'google_search': {}}
 chat = client.chats.create(
-    model = "gemini-2.0-flash-thinking-exp",
-    tools = search_tool
+    model = "gemini-2.0-flash-thinking-exp"
+)
+first_response = chat.send_message(
+    sys_instruct,
+    Tools=search_tool,
 )
 
 ### discord initial

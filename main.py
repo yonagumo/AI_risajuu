@@ -31,9 +31,7 @@ origin_sys_instruct = """
 
 sys_instruct = origin_sys_instruct
 client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
-google_search = Tool(
-    google_search = GoogleSearch()
-)
+google_search_tool = Tool(google_search=GoogleSearch())
 chat = client.chats.create(model="gemini-2.0-flash")
 chat.send_message(sys_instruct)
 
@@ -93,12 +91,12 @@ async def on_message(message):
     if input_text.endswith("カンニングしていいよ"):
         response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents = input_text,
-            config = types.GenerateConfig(
+            contents=input_text,
+            config=types.GenerateConfig(
                 system_instruction=sys_instruct,
-                tools=[google_search],
+                tools=[google_search_tool],
                 respons_modalities=["TEXT"],
-            )
+            ),
         )
         answer = response.text
         splitted_text = split_text(answer)

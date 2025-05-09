@@ -3,11 +3,8 @@ import os
 from keep_alive import keep_alive
 
 from google import genai
-from google.genai.types import (
-    GenerateContentConfig,
-    GoogleSearch,
-    Tool,
-)
+from google.genai import types
+from google.genai.types import Tool, GenerateContentConfig, GoogleSearch
 
 
 origin_sys_instruct = """
@@ -36,7 +33,8 @@ origin_sys_instruct = """
 sys_instruct = origin_sys_instruct
 client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 google_search_tool = Tool(google_search=GoogleSearch())
-history = []
+chat = client.chats.create(model="gemini-2.0-flash")
+chat.send_message(sys_instruct)
 
 ### discord initial
 intents = discord.Intents.default()
@@ -78,30 +76,38 @@ async def on_message(message):
     if input_text.endswith("リセット"):
         chat = None
         sys_instruct = origin_sys_instruct
-        history = []
+        chat = client.chats.create(model="gemini-2.0-flash")
+        chat.send_message(sys_instruct)
         await message.channel.send("履歴をリセットしたじゅう！")
         return
 
     if input_text.startswith("カスタム"):
         sys_instruct = input_text.replace("カスタム", "")
-        history = []
+        chat = None
+        chat = client.chats.create(model="gemini-2.0-flash")
         chat.send_message(sys_instruct)
         await message.channel.send(
             "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
         )
         return
 
-    history.append({"role": "user", "parts": [input_text]})
-    answer = client.models.generate_content(
+    if input_text.endswith("カンニングしていいよ"):
+        response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=history,
+            contents=str(input_text),
             config=GenerateContentConfig(
                 system_instruction=sys_instruct,
                 tools=[google_search_tool],
                 response_modalities=["TEXT"],
             ),
         )
-    history.append({"role": "model", "parts": [answer.text]})
+        answer = response.text
+        splitted_text = split_text(answer)
+        for chunk in splitted_text:
+            await message.channel.send(chunk)
+        return
+
+    answer = chat.send_message(input_text)
 
     splitted_text = split_text(answer.text)
     for chunk in splitted_text:

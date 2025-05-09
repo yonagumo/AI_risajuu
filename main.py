@@ -36,6 +36,7 @@ origin_sys_instruct = """
 sys_instruct = origin_sys_instruct
 client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 google_search_tool = Tool(google_search=GoogleSearch())
+global history
 history = []
 
 ### discord initial

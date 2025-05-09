@@ -116,12 +116,25 @@ async def on_message(message):
             system_instruction=sys_instruct,
             tools=[google_search_tool],
             response_modalities=["TEXT"],
-            #response_schema=Response,
+            # response_schema=Response,
+            safety_settings=[
+                {"category": "HARM_CATEGORY_DEROGATORY", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_VIOLENCE", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_SEXUAL", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_MEDICAL", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_DANGEROUS", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_NONE",
+                },
+            ],
         ),
     )
-    #json = json.load(pre_answer)
-    #status = json["status"]
-    #answer = json["content"]
+    # json = json.load(pre_answer)
+    # status = json["status"]
+    # answer = json["content"]
     history.append({"role": "model", "parts": [answer.text]})
 
     splitted_text = split_text(answer.text)

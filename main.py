@@ -117,7 +117,7 @@ async def on_message(message):
             system_instruction=sys_instruct,
             tools=[google_search_tool],
             response_modalities=["TEXT"],
-            response_schema=Response,
+            #response_schema=Response,
         ),
     )
     json = json.load(pre_answer)

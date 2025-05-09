@@ -99,13 +99,16 @@ async def on_message(message):
 
     if input_text.endswith("エクスポート"):
         await message.channel.send("履歴をエクスポートするじゅう！")
-        with io.StringIO(str(chat_history)) as file:
-            await message.channel.send(
-                file=discord.File(
-                    file,
-                    filename="chat_history_" & str(datetime.datetime.now()) & ".txt",
-                )
+        temp_filename = f"chat_history_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        with open(temp_filename, "w", encoding="utf-8") as temp_file:
+            temp_file.write(str(chat_history))
+        await message.channel.send(
+            file=discord.File(
+                temp_filename,
+                filename=temp_filename,
             )
+        )
+        os.remove(temp_filename)
         return
 
     if input_text.endswith("インポート"):

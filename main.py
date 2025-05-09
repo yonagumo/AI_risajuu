@@ -1,7 +1,6 @@
 import discord
 import os
 import io
-import json
 import datetime
 from keep_alive import keep_alive
 from google import genai
@@ -112,9 +111,8 @@ async def on_message(message):
         if message.attachments:
             attachment = message.attachments[0]
             if attachment.filename.endswith(".txt"):
-                file = await attachment.to_file()
-                with open(file, "r") as file:
-                    chat_history = file.read()
+                file = await attachment.read()
+                chat_history = eval(file.decode("utf-8"))
                 await message.channel.send("履歴をインポートしたじゅう！")
             else:
                 await message.channel.send("テキストファイルを添付してほしいじゅう！")

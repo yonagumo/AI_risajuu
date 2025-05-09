@@ -50,30 +50,29 @@ chat_history = []
 ### discord initial
 intents = discord.Intents.default()
 intents.message_content = True
-discord = discord.Client(intents=intents)
-
+discord_client = discord.Client(intents=intents)
 
 def split_message_text(text, chunk_size=1500):
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
 
-@discord.event
+@discord_client.event
 async def on_ready():
-    print(f"We have logged in as {discord.user}")
+    print(f"We have logged in as {discord_client.user}")
 
 
-@discord.event
+@discord_client.event
 async def on_message(message):
     global system_instruction
     global chat_history
-    if message.author == discord.user:
+    if message.author == discord_client.user:
         return
     if message.author.bot:
         return
     if all(
         [
             message.channel.name != "ai試験場",
-            discord.user.mentioned_in(message) == False,
+            discord_client.user.mentioned_in(message) == False,
         ]
     ):
         return
@@ -102,8 +101,8 @@ async def on_message(message):
         with io.StringIO(str(chat_history)) as file:
             await message.channel.send(
                 file=discord.File(
-                    fp=io.BytesIO(file.getvalue().encode()),
-                    filename="chat_history_" & str(datetime.datetime.now()) & ".txt",
+                    file,
+                    "chat_history_" & str(datetime.datetime.now()) & ".txt",
                 )
             )
         return
@@ -162,4 +161,4 @@ discord_token = os.getenv("DISCORD_TOKEN")
 
 # Web サーバの立ち上げ
 keep_alive()
-discord.run(discord_token)
+discord_client.run(discord_token)

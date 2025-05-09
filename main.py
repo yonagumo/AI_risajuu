@@ -86,7 +86,6 @@ async def on_message(message):
     if input_text.startswith("カスタム"):
         sys_instruct = input_text.replace("カスタム", "")
         history = []
-        chat.send_message(sys_instruct)
         await message.channel.send(
             "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
         )
@@ -95,7 +94,7 @@ async def on_message(message):
     history.append({"role": "user", "parts": [input_text]})
     answer = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=history,
+            contents=str(history),
             config=GenerateContentConfig(
                 system_instruction=sys_instruct,
                 tools=[google_search_tool],

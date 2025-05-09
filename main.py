@@ -102,7 +102,7 @@ async def on_message(message):
             await message.channel.send(
                 file=discord.File(
                     file,
-                    "chat_history_" & str(datetime.datetime.now()) & ".txt",
+                    "chat_history_" + str(datetime.datetime.now()) + ".txt",
                 )
             )
         return

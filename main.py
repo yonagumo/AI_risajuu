@@ -1,7 +1,9 @@
 import discord
 import os
+import enum
+import json
+from pydantic import BaseModel
 from keep_alive import keep_alive
-
 from google import genai
 from google.genai.types import (
     GenerateContentConfig,
@@ -9,6 +11,11 @@ from google.genai.types import (
     Tool,
 )
 
+
+first_message = """
+# 指示
+
+"""
 
 origin_sys_instruct = """
 # 指示
@@ -33,11 +40,23 @@ origin_sys_instruct = """
 - 体重やオバケのようなことでイジられるとちょっと不機嫌になる。（本人はこういったことを隠そうとしている）
 """
 
-sys_instruct = origin_sys_instruct
+sys_instruct = first_message + origin_sys_instruct
 client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
 google_search_tool = Tool(google_search=GoogleSearch())
 global history
 history = []
+
+
+class Status(enum.Enum):
+    RESET = "reset"
+    IGNORE = "ignore"
+    NORMAL = "normal"
+
+
+class Response(BaseModel):
+    status: Status
+    content: str
+
 
 ### discord initial
 intents = discord.Intents.default()
@@ -77,14 +96,13 @@ async def on_message(message):
         return
 
     if input_text.endswith("リセット"):
-        chat = None
-        sys_instruct = origin_sys_instruct
+        sys_instruct = first_message + origin_sys_instruct
         history = []
         await message.channel.send("履歴をリセットしたじゅう！")
         return
 
     if input_text.startswith("カスタム"):
-        sys_instruct = input_text.replace("カスタム", "")
+        sys_instruct = first_message + input_text.replace("カスタム", "")
         history = []
         await message.channel.send(
             "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
@@ -92,15 +110,19 @@ async def on_message(message):
         return
 
     history.append({"role": "user", "parts": [input_text]})
-    answer = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=str(history),
-            config=GenerateContentConfig(
-                system_instruction=sys_instruct,
-                tools=[google_search_tool],
-                response_modalities=["TEXT"],
-            ),
-        )
+    pre_answer = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=str(history),
+        config=GenerateContentConfig(
+            system_instruction=sys_instruct,
+            tools=[google_search_tool],
+            response_modalities=["TEXT"],
+            response_schema=Response,
+        ),
+    )
+    json = json.load(pre_answer)
+    status = json["status"]
+    answer = json["content"]
     history.append({"role": "model", "parts": [answer.text]})
 
     splitted_text = split_text(answer.text)

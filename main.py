@@ -122,13 +122,11 @@ async def on_message(message):
     #json = json.load(pre_answer)
     #status = json["status"]
     #answer = json["content"]
-    if answer != None:
-        history.append({"role": "model", "parts": [answer.text]})
-        splitted_text = split_text(answer.text)
-        for chunk in splitted_text:
-            await message.channel.send(chunk)
-    else:
-        history.pop()
+    history.append({"role": "model", "parts": [answer.text]})
+
+    splitted_text = split_text(answer.text)
+    for chunk in splitted_text:
+        await message.channel.send(chunk)
 
 
 TOKEN = os.getenv("DISCORD_TOKEN")

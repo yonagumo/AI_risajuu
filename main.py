@@ -118,17 +118,22 @@ async def on_message(message):
             response_modalities=["TEXT"],
             # response_schema=Response,
             safety_settings=[
-                {"category": "HARM_CATEGORY_DEROGATORY", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_VIOLENCE", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_SEXUAL", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_MEDICAL", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_DANGEROUS", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                {
-                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                    "threshold": "BLOCK_NONE",
-                },
+                types.SafetySetting(
+                    category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                    threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                ),
+                types.SafetySetting(
+                    category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                    threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                ),
+                types.SafetySetting(
+                    category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                    threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                ),
+                types.SafetySetting(
+                    category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                    threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                ),
             ],
         ),
     )

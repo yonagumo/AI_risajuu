@@ -110,7 +110,7 @@ async def on_message(message):
         return
 
     history.append({"role": "user", "parts": [input_text]})
-    pre_answer = client.models.generate_content(
+    answer = client.models.generate_content(
         model="gemini-2.0-flash",
         contents=str(history),
         config=GenerateContentConfig(
@@ -120,9 +120,9 @@ async def on_message(message):
             #response_schema=Response,
         ),
     )
-    json = json.load(pre_answer)
-    status = json["status"]
-    answer = json["content"]
+    #json = json.load(pre_answer)
+    #status = json["status"]
+    #answer = json["content"]
     history.append({"role": "model", "parts": [answer.text]})
 
     splitted_text = split_text(answer.text)

@@ -5,6 +5,7 @@ import json
 from pydantic import BaseModel
 from keep_alive import keep_alive
 from google import genai
+from google.genai import types
 from google.genai.types import (
     GenerateContentConfig,
     GoogleSearch,

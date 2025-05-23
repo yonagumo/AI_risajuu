@@ -18,7 +18,7 @@ class Reply:
 
 class AI_risajuu:
     def __init__(self, api_key, system_instruction):
-        self.model_name = "gemini-2.5-flash-preview-05-20"
+        self.model_name = os.getenv("MAIN_MODEL_NAME")
         self.google_search_tool = Tool(google_search=GoogleSearch())
         self.client = genai.Client(api_key=api_key)
         self.chat_history = []
@@ -76,7 +76,7 @@ class AI_risajuu:
             contents = history,
             config = GenerateContentConfig(
                 system_instruction = self.system_instruction,
-                #tools = [self.google_search_tool],
+                tools = [self.google_search_tool if "gemini-2" in self.model_name else None],
                 safety_settings = [
                     types.SafetySetting(
                         category = types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,

@@ -7,20 +7,21 @@ from keep_alive import keep_alive
 
 from ai_risajuu import AI_risajuu
 
+
 def main():
     load_dotenv()
 
     google_api_key = os.environ["GOOGLE_API_KEY"]
-    with open('prompt.md', 'r', encoding='utf-8') as f:
+    with open("prompt.md", "r", encoding="utf-8") as f:
         system_prompt = f.read()
     risajuu = AI_risajuu(google_api_key, system_prompt)
+
+    # Web サーバの立ち上げ
+    keep_alive()
 
     discord_token = os.getenv("DISCORD_TOKEN")
     client = Risaju_discord_client(risajuu)
     client.run(discord_token)
-
-    # Web サーバの立ち上げ
-    keep_alive()
 
 
 class Risaju_discord_client(discord.Client):
@@ -36,8 +37,8 @@ class Risaju_discord_client(discord.Client):
     async def on_message(self, message):
         if message.author == self.user or message.author.bot:
             return
-        
-        if message.channel.name == "ai試験場" or self.user.mentioned_in(message):
+
+        if message.channel.name in os.getenv("TARGET_CHANNEL_NAME").split(",") or self.user.mentioned_in(message):
             reply = self.risajuu.chat(message.content)
 
             for chunk in reply.text:

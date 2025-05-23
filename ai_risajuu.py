@@ -23,6 +23,7 @@ class AI_risajuu:
         self.client = genai.Client(api_key=api_key)
         self.chat_history = []
         self.system_instruction = system_instruction
+        self.current_instruction = system_instruction
 
     def chat(self, input_text):
 
@@ -33,16 +34,15 @@ class AI_risajuu:
 
         if input_text.endswith("リセット"):
             self.chat_history = []
+            self.current_instruction = self.system_instruction
             reply.text = ["履歴をリセットしたじゅう！"]
             return reply
 
-        #if input_text.startswith("カスタム"):
-        #    system_instruction = input_text.replace("カスタム", "") + initial_message
-        #    chat_history = []
-        #    await message.channel.send(
-        #        "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
-        #    )
-        #    return
+        if input_text.startswith("カスタム"):
+           self.chat_history = []
+           self.current_instruction = input_text.replace("カスタム", "")
+           reply.text = ["カスタム履歴で新たなチャットを開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"]
+           return reply
 
         if input_text.endswith("エクスポート"):
             reply.text = ["履歴をエクスポートするじゅう！"]
@@ -75,7 +75,7 @@ class AI_risajuu:
             model = self.model_name,
             contents = history,
             config = GenerateContentConfig(
-                system_instruction = self.system_instruction,
+                system_instruction = self.current_instruction,
                 #tools = [self.google_search_tool],
                 safety_settings = [
                     types.SafetySetting(

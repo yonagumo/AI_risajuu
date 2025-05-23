@@ -11,7 +11,7 @@ def main():
     load_dotenv()
 
     google_api_key = os.environ["GOOGLE_API_KEY"]
-    with open('prompt.md','r') as f:
+    with open('prompt.md', 'r', encoding='utf-8') as f:
         system_prompt = f.read()
     risajuu = AI_risajuu(google_api_key, system_prompt)
 

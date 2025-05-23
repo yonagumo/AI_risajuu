@@ -39,9 +39,18 @@ class Risaju_discord_client(discord.Client):
         
         if message.channel.name == "ai試験場" or self.user.mentioned_in(message):
             reply = self.risajuu.chat(message.content)
-            if reply:
-                for chunk in reply:
-                    await message.channel.send(chunk)
+
+            for chunk in reply.text:
+                await message.channel.send(chunk)
+
+            if reply.export_history:
+                with io.StringIO(reply.export_history) as file:
+                    await message.channel.send(
+                        file=discord.File(
+                            file,
+                            "chat_history_" + str(datetime.datetime.now()) + ".txt",
+                        )
+                    )
 
 
 if __name__ == "__main__":

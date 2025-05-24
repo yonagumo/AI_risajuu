@@ -1,13 +1,18 @@
+import asyncio
 import os
 
 from dotenv import load_dotenv
 
 from ai_risajuu import AI_risajuu
-from discord_client import Risajuu_discord_client
-from keep_alive import keep_alive
+
+# from keep_alive import keep_alive
+from discord_client import (
+    Manager_discord_client,
+    Risajuu_discord_client,
+)
 
 
-def main():
+async def main():
     load_dotenv()
 
     with open("default_prompt.md", "r", encoding="utf-8") as f:
@@ -16,16 +21,23 @@ def main():
         common_prompt = f.read()
         system_prompt = system_prompt + common_prompt
 
+    # Webサーバの立ち上げ
+    # keep_alive()
+
     google_api_key = os.environ["GOOGLE_API_KEY"]
     risajuu = AI_risajuu(google_api_key, system_prompt)
 
-    # Webサーバの立ち上げ
-    keep_alive()
+    manager_discord = Manager_discord_client()
+    manager_token = os.getenv("DISCORD_TOKEN_MANAGER")
 
-    discord_token = os.getenv("DISCORD_TOKEN")
-    client = Risajuu_discord_client(risajuu)
-    client.run(discord_token)
+    risajuu_discord = Risajuu_discord_client(risajuu, manager_discord)
+    risajuu_token = os.getenv("DISCORD_TOKEN_RISAJUU")
+
+    try:
+        await asyncio.gather(manager_discord.start(manager_token), risajuu_discord.start(risajuu_token))
+    except asyncio.CancelledError:
+        print("exit")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

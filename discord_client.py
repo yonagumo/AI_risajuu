@@ -3,12 +3,25 @@ import os
 import discord
 
 
+class Manager_discord_client(discord.Client):
+    def __init__(self):
+        intents = discord.Intents.default()
+        super().__init__(intents=intents)
+
+    async def on_ready(self):
+        print(f"We have logged in as {self.user}")
+
+    async def test_message(self, user, channel_id):
+        await self.get_channel(channel_id).send(f"{user.name}によって呼び出されました")
+
+
 class Risajuu_discord_client(discord.Client):
-    def __init__(self, risajuu):
+    def __init__(self, risajuu, manager):
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(intents=intents)
         self.risajuu = risajuu
+        self.manager = manager
 
     async def on_ready(self):
         print(f"We have logged in as {self.user}")
@@ -22,6 +35,11 @@ class Risajuu_discord_client(discord.Client):
                 await self.reply_to_message(message)
 
     async def reply_to_message(self, message):
+        if message.content.startswith("呼び出し"):
+            await message.channel.send(f"お～い！{message.author.display_name}が呼んでるじゅう！")
+            await self.manager.test_message(self.user, message.channel.id)
+            return
+
         reply = await self.risajuu.chat(message.content, message.attachments)
 
         if reply.text is None:

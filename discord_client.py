@@ -11,6 +11,18 @@ from pydantic import BaseModel
 from ai_risajuu import AI_risajuu, ReplyType
 
 
+class Manager_discord_client(discord.Client):
+    def __init__(self):
+        intents = discord.Intents.default()
+        super().__init__(intents=intents)
+
+    async def on_ready(self):
+        print(f"We have logged in as {self.user}")
+
+    async def test_message(self, user, channel_id):
+        await self.get_channel(channel_id).send(f"{user.name}によって呼び出されました")
+
+
 # りさじゅうインスタンス辞書のキーのための現在の場所の種類
 class InstanceType(str, Enum):
     server = "server"
@@ -33,12 +45,13 @@ def split_message_text(text, chunk_size=1500):
 
 # Discordのイベントを監視するメインのクラス
 class Risajuu_discord_client(discord.Client):
-    def __init__(self, risajuu_config):
+    def __init__(self, risajuu_config, manager):
         # メッセージイベントのみ受信する設定
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(intents=intents)
 
+        self.manager = manager
         self.risajuu_config = risajuu_config
         self.risajuu_instance = {}
         self.targets = []
@@ -95,6 +108,11 @@ class Risajuu_discord_client(discord.Client):
         # メッセージに返答する
 
         input_text = message.content
+
+        if input_text.startswith("呼び出し"):
+            await message.channel.send(f"お～い！{message.author.display_name}が呼んでるじゅう！")
+            await self.manager.test_message(self.user, message.channel.id)
+            return
 
         if input_text.startswith("カスタム\n"):
             custom_instruction = input_text.replace("カスタム\n", "")

@@ -1,13 +1,16 @@
+import asyncio
 import os
 
 from dotenv import load_dotenv
 
 from ai_risajuu import RisajuuConfig
-from discord_client import Risajuu_discord_client
-from keep_alive import keep_alive
+from discord_client import (
+    Manager_discord_client,
+    Risajuu_discord_client,
+)
 
 
-def main():
+async def main():
     # .envファイルの内容を環境変数として取り込む
     load_dotenv()
 
@@ -28,16 +31,20 @@ def main():
     )
 
     # Discordクライアントの初期化
-    client = Risajuu_discord_client(risajuu_config)
-
-    # Webサーバの立ち上げ
-    keep_alive()
+    manager_discord = Manager_discord_client()
+    risajuu_discord = Risajuu_discord_client(risajuu_config, manager_discord)
 
     # Discordクライアントの起動
-    discord_token = os.getenv("DISCORD_TOKEN")
-    client.run(discord_token)
-    print("\n=== exit ===")
+    risajuu_token = os.getenv("DISCORD_TOKEN_RISAJUU")
+    manager_token = os.getenv("DISCORD_TOKEN_MANAGER")
+
+    try:
+        async with asyncio.TaskGroup() as tasks:
+            tasks.create_task(risajuu_discord.start(risajuu_token))
+            tasks.create_task(manager_discord.start(manager_token))
+    except asyncio.CancelledError:
+        print("\n=== exit ===")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

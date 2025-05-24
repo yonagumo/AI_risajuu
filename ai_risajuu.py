@@ -23,7 +23,7 @@ class Reply:
 
 
 class AI_risajuu:
-    def __init__(self, api_key, system_instruction):
+    def __init__(self, api_key, system_instruction, common_instruction):
         self.model_name = os.getenv("MAIN_MODEL_NAME")
         self.google_search_tool = Tool(google_search=GoogleSearch())
         self.url_context_tool = Tool(url_context=types.UrlContext())
@@ -31,8 +31,40 @@ class AI_risajuu:
         self.chat_history = []
         self.system_instruction = system_instruction
         self.current_system_instruction = system_instruction
+        self.common_instruction = common_instruction
 
-    async def chat(self, input_text, attachments):
+    def custom(self, custom_instruction):
+        self.current_instruction = custom_instruction + self.common_instruction
+        reply = Reply()
+        reply.text = [
+            "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
+        ]
+        return reply
+
+    def export_history(self):
+        reply = Reply()
+        reply.text = ["履歴をエクスポートするじゅう！"]
+        json_data = json.dumps(self.chat_history, ensure_ascii=False, indent=2)
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        prefix = f"risajuu_history_{timestamp}_"
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=".json", prefix=prefix, mode="w", encoding="utf-8"
+        ) as file:
+            file.write(json_data)
+            file.flush()
+            reply.attachments.append(file.name)
+        return reply
+
+    def import_history(self, history):
+        reply = Reply()
+        if history:
+            self.chat_history.extend(history)
+            reply.text = ["履歴をインポートしたじゅう！"]
+        else:
+            reply.text = ["インポートするには、1つのJSONファイルを添付してほしいじゅう！"]
+        return reply
+
+    def chat(self, input_text, _attachments):
         if input_text.startswith("あ、これはりさじゅう反応しないでね"):
             return
 
@@ -43,40 +75,6 @@ class AI_risajuu:
             self.current_system_instruction = self.system_instruction
             reply.text = ["履歴をリセットしたじゅう！"]
             return reply
-
-        if input_text.endswith("エクスポート"):
-            reply.text = ["履歴をエクスポートするじゅう！"]
-            json_data = json.dumps(self.chat_history, ensure_ascii=False, indent=2)
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            prefix = f"risajuu_history_{timestamp}_"
-            with tempfile.NamedTemporaryFile(
-                delete=False, suffix=".json", prefix=prefix, mode="w", encoding="utf-8"
-            ) as file:
-                file.write(json_data)
-                file.flush()
-                reply.attachments.append(file.name)
-            return reply
-
-        if input_text.startswith("カスタム"):
-            custom_instruction = input_text.replace("カスタム", "")
-            with open("common_prompt.md", "r", encoding="utf-8") as f:
-                common_prompt = f.read()
-                self.current_system_instruction = custom_instruction + common_prompt
-            reply.text = [
-                "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
-            ]
-            return reply
-
-        if input_text.startswith("インポート"):
-            if len(attachments) == 1 and attachments[0].filename.lower().endswith(".json"):
-                json_data = await attachments[0].read()
-                json_str = json_data.decode("utf-8").replace("\n", "")
-                self.chat_history.append(json.loads(json_str))
-                reply.text = ["履歴をインポートしたじゅう！"]
-                return reply
-            else:
-                reply.text = ["インポートするには、1つのJSONファイルを添付してほしいじゅう！"]
-                return reply
 
         self.chat_history.append({"role": "user", "parts": [input_text]})
         answer = self.generate_answer(str(self.chat_history))

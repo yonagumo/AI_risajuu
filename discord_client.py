@@ -1,3 +1,4 @@
+import json
 import os
 
 import discord
@@ -40,7 +41,24 @@ class Risajuu_discord_client(discord.Client):
             await self.manager.test_message(self.user, message.channel.id)
             return
 
-        reply = await self.risajuu.chat(message.content, message.attachments)
+        input_text = message.content
+
+        if input_text.startswith("カスタム"):
+            reply = self.risajuu.custom(input_text.replace("カスタム", ""))
+        elif input_text.endswith("エクスポート"):
+            reply = self.risajuu.export_history()
+        elif input_text.endswith("インポート"):
+            history = None
+            if len(message.attachments) == 1 and message.attachments[0].filename.lower().endswith(".json"):
+                json_data = await message.attachments[0].read()
+                try:
+                    json_str = json_data.decode("utf-8").replace("\n", "")
+                    history = json.loads(json_str)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    pass
+            reply = self.risajuu.import_history(history)
+        else:
+            reply = self.risajuu.chat(message.content, message.attachments)
 
         if reply.text is None:
             return

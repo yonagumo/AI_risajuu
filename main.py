@@ -20,7 +20,8 @@ async def main():
     # keep_alive()
 
     google_api_key = os.environ["GOOGLE_API_KEY"]
-    risajuu = AI_risajuu(google_api_key, system_instruction)
+    model_name = "gemini-2.5-flash-preview-05-20"
+    risajuu = AI_risajuu(google_api_key, model_name, system_instruction)
 
     manager_discord = Manager_discord()
     manager_token = os.getenv("DISCORD_TOKEN_MANAGER")

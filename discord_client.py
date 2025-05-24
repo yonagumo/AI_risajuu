@@ -1,7 +1,10 @@
 import io
 import datetime
+from datetime import (timezone, timedelta)
 import json
 import discord
+
+from ai_risajuu import newMessage
 
 class Manager_discord(discord.Client):
     def __init__(self):
@@ -32,8 +35,6 @@ class Risajuu_discord(discord.Client):
             return
         
         if message.channel.name == "yonagumo" or self.user.mentioned_in(message):
-            author_name = message.author.nick or message.author.global_name or message.author.name
-
             input_text = message.content
 
             if input_text.startswith("カスタム"):
@@ -52,13 +53,15 @@ class Risajuu_discord(discord.Client):
                             pass
                 reply = self.risajuu.import_history(history)
             else:
-                reply = self.risajuu.chat(message.content)
+                created = message.created_at.astimezone(timezone(timedelta(hours=9))).isoformat()
+                content = newMessage(False, message.author.display_name, message.author.name, created, input_text)
+                reply = self.risajuu.chat(content)
 
-            for chunk in reply.text:
+            for chunk in reply.texts:
                 await message.channel.send(chunk)
 
-            if reply.export_history is not None:
-                json_history = json.dumps(reply.export_history, indent=2, ensure_ascii=False)
+            if reply.history is not None:
+                json_history = json.dumps(reply.history, indent=2, ensure_ascii=False)
                 with io.StringIO(json_history) as file:
                     await message.channel.send(
                         file=discord.File(

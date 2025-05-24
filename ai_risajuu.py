@@ -1,25 +1,48 @@
-import os
-
+import json
+import copy
 from google import genai
 from google.genai import types
-from google.genai.types import (
-    GenerateContentConfig,
-    GoogleSearch,
-    Tool,
-)
+from google.genai.types import Tool, GenerateContentConfig
+
+
+# class Message:
+#     bot: bool
+#     author_display_name: str
+#     author_name: str
+#     created_at: str
+#     body: str
+    # def __init__(self, bot, author_display_name, author_name, created_at, body):
+    #     self.bot = bot
+    #     self.author_display_name = author_display_name
+    #     self.author_name = author_name
+    #     self.created_at = created_at
+    #     self.body = body
+
+
+class Reply:
+    texts: list[str]
+    history: list[dict]
+
+
+def newMessage(bot, author_display_name, author_name, created_at, body):
+    message = {}
+    message["bot"] = bot
+    message["author_display_name"] = author_display_name
+    message["author_name"] = author_name
+    message["created_at"] = created_at
+    message["body"] = body
+    return message
+
 
 def split_message_text(text, chunk_size=1500):
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
-class Reply:
-    text = []
-    export_history = None
 
 class AI_risajuu:
-    def __init__(self, api_key, system_instruction):
-        self.model_name = "gemini-2.5-flash-preview-05-20"
-        self.google_search_tool = Tool(google_search=GoogleSearch())
+    def __init__(self, api_key, model_name, system_instruction):
         self.client = genai.Client(api_key=api_key)
+        self.model_name = model_name
+        self.tools = [Tool(url_context=types.UrlContext), Tool(google_search=types.GoogleSearch)]
         self.chat_history = []
         self.system_instruction = system_instruction
         self.current_instruction = system_instruction
@@ -28,50 +51,62 @@ class AI_risajuu:
         self.chat_history = []
         self.current_instruction = instruction
         reply = Reply()
-        reply.text = ["カスタムインストラクションで新たなチャットを開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"]
+        reply.texts = ["カスタム指示で新たなチャットを開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"]
         return reply
     
     def export_history(self):
         reply = Reply()
-        reply.text = ["履歴をエクスポートするじゅう！"]
-        reply.export_history = self.chat_history
+        reply.texts = ["履歴をエクスポートするじゅう！"]
+        reply.history = self.chat_history
         return reply
     
     def import_history(self, history):
         reply = Reply()
         if history:
             self.chat_history = history
-            reply.text = ["履歴をインポートしたじゅう！"]
+            reply.texts = ["履歴をインポートしたじゅう！"]
         else:
-            reply.text = ["JSONファイルを添付してほしいじゅう！"]
+            reply.texts = ["JSONファイルを添付してほしいじゅう！"]
         return reply
 
-    def chat(self, input_text):
-        if input_text.startswith("あ、これはりさじゅう反応しないでね"):
+    def chat(self, input):
+        if input["body"].startswith("あ、これはりさじゅう反応しないでね"):
             return
         
         reply = Reply()
 
-        self.chat_history.append({"role": "user", "parts": [input_text]})
-        answer = self.generate_answer(str(self.chat_history))
-        self.chat_history.append({"role": "model", "parts": [answer.text]})
+        self.chat_history.append(input)
+        response = self.generate_answer(self.chat_history)
+        message = newMessage(True, "AIりさじゅう", "AIりさじゅう#2535", input["created_at"], response.text)
+        self.chat_history.append(message)
+        reply.texts = split_message_text(message["body"])
 
-        reply.text = split_message_text(answer.text)
-
-        if input_text.endswith("リセット"):
+        if input["body"].endswith("リセット"):
             self.chat_history = []
             self.current_instruction = self.system_instruction
-            reply.text.append("履歴をリセットしたじゅう！")
+            reply.texts.append("履歴をリセットしたじゅう！")
 
         return reply
     
     def generate_answer(self, history):
+        contents = []
+        for h in history:
+            role = "model" if h["bot"] else "user"
+            dic = copy.copy(h)
+            del dic["bot"]
+            jsonstr = json.dumps(dic, ensure_ascii=False)
+            content = types.Content(
+                role=role,
+                parts=[types.Part.from_text(text=jsonstr)]
+            )
+            contents.append(content)
+
         return self.client.models.generate_content(
             model=self.model_name,
-            contents=history,
+            contents=contents,
             config=GenerateContentConfig(
                 system_instruction = self.current_instruction,
-                #tools=[self.google_search_tool],
+                #tools=self.tools,
                 safety_settings=[
                     types.SafetySetting(
                         category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,

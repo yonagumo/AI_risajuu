@@ -1,10 +1,12 @@
 import io
 import datetime
+import json
 import discord
 
 class Manager_discord(discord.Client):
     def __init__(self):
         intents = discord.Intents.default()
+
         super().__init__(intents=intents)
 
     async def on_ready(self):
@@ -30,22 +32,37 @@ class Risajuu_discord(discord.Client):
             return
         
         if message.channel.name == "yonagumo" or self.user.mentioned_in(message):
-            if message.content.startswith("呼び出し"):
-                display_name = message.author.nick or message.author.global_name or message.author.name
-                await message.channel.send(f"お～い！{display_name}が呼んでるじゅう！")
-                await self.manager.test_message(self.user, message.channel.id)
-                return
+            author_name = message.author.nick or message.author.global_name or message.author.name
 
-            reply = self.risajuu.chat(message.content)
+            input_text = message.content
+
+            if input_text.startswith("カスタム"):
+                reply = self.risajuu.custom(input_text.replace("カスタム", ""))
+            elif input_text.endswith("エクスポート"):
+                reply = self.risajuu.export_history()
+            elif input_text.endswith("インポート"):
+                history = None
+                if message.attachments:
+                    attachment = message.attachments[0]
+                    if attachment.filename.endswith(".json"):
+                        file = await attachment.read()
+                        try:
+                            history = json.loads(file.decode("utf-8"))
+                        except (json.JSONDecodeError, UnicodeDecodeError):
+                            pass
+                reply = self.risajuu.import_history(history)
+            else:
+                reply = self.risajuu.chat(message.content)
 
             for chunk in reply.text:
                 await message.channel.send(chunk)
 
             if reply.export_history:
-                with io.StringIO(reply.export_history) as file:
+                json_history = json.dumps(reply.export_history, indent=2, ensure_ascii=False)
+                with io.StringIO(json_history) as file:
                     await message.channel.send(
                         file=discord.File(
                             file,
-                            "chat_history_" + str(datetime.datetime.now()) + ".txt",
+                            "chat_history_" + str(datetime.datetime.now()) + ".json",
                         )
                     )

@@ -13,14 +13,14 @@ from ai_risajuu import AI_risajuu
 async def main():
     load_dotenv()
 
-    with open('prompt.md','r') as f:
-        system_prompt = f.read()
+    with open("system_instruction.md","r", encoding="utf-8") as f:
+        system_instruction = f.read()
 
     # Webサーバの立ち上げ
     # keep_alive()
 
     google_api_key = os.environ["GOOGLE_API_KEY"]
-    risajuu = AI_risajuu(google_api_key, system_prompt)
+    risajuu = AI_risajuu(google_api_key, system_instruction)
 
     manager_discord = Manager_discord()
     manager_token = os.getenv("DISCORD_TOKEN_MANAGER")

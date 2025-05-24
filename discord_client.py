@@ -1,7 +1,10 @@
 import json
 import os
+from datetime import timedelta, timezone
 
 import discord
+
+from ai_risajuu import newMessage
 
 
 class Manager_discord_client(discord.Client):
@@ -42,7 +45,6 @@ class Risajuu_discord_client(discord.Client):
             return
 
         input_text = message.content
-
         if input_text.startswith("カスタム"):
             reply = self.risajuu.custom(input_text.replace("カスタム", ""))
         elif input_text.endswith("エクスポート"):
@@ -58,9 +60,11 @@ class Risajuu_discord_client(discord.Client):
                     pass
             reply = self.risajuu.import_history(history)
         else:
-            reply = self.risajuu.chat(message.content, message.attachments)
+            created = message.created_at.astimezone(timezone(timedelta(hours=9))).isoformat()
+            content = newMessage(False, message.author.display_name, message.author.name, created, input_text)
+            reply = self.risajuu.chat(content, message.attachments)
 
-        if reply.text is None:
+        if reply.texts is None:
             return
 
         if len(reply.text) > 0:

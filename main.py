@@ -24,8 +24,9 @@ async def main():
     # Webサーバの立ち上げ
     # keep_alive()
 
-    google_api_key = os.environ["GOOGLE_API_KEY"]
-    risajuu = AI_risajuu(google_api_key, system_prompt, common_prompt)
+    google_api_key = os.getenv("GOOGLE_API_KEY")
+    model_name = os.getenv("MAIN_MODEL_NAME")
+    risajuu = AI_risajuu(google_api_key, model_name, system_prompt, common_prompt)
 
     manager_discord = Manager_discord_client()
     manager_token = os.getenv("DISCORD_TOKEN_MANAGER")

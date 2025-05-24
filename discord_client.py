@@ -57,7 +57,7 @@ class Risajuu_discord(discord.Client):
             for chunk in reply.text:
                 await message.channel.send(chunk)
 
-            if reply.export_history:
+            if reply.export_history is not None:
                 json_history = json.dumps(reply.export_history, indent=2, ensure_ascii=False)
                 with io.StringIO(json_history) as file:
                     await message.channel.send(

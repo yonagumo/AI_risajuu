@@ -8,7 +8,6 @@ from google.genai.types import (
     Tool,
 )
 
-
 def split_message_text(text, chunk_size=1500):
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
@@ -26,7 +25,6 @@ class AI_risajuu:
         self.current_instruction = system_instruction
 
     def chat(self, input_text):
-
         if input_text.startswith("あ、これはりさじゅう反応しないでね"):
             return
         

@@ -70,17 +70,17 @@ class AI_risajuu:
 
         reply = Reply()
 
-        if input_text.endswith("リセット"):
-            self.chat_history = []
-            self.current_system_instruction = self.system_instruction
-            reply.text = ["履歴をリセットしたじゅう！"]
-            return reply
-
         self.chat_history.append({"role": "user", "parts": [input_text]})
         answer = self.generate_answer(str(self.chat_history))
         self.chat_history.append({"role": "model", "parts": [answer.text.strip()]})
 
         reply.text = split_message_text(answer.text)
+
+        if input_text.endswith("リセット"):
+            self.chat_history = []
+            self.current_instruction = self.system_instruction
+            reply.text.append("履歴をリセットしたじゅう！")
+
         return reply
 
     def generate_answer(self, history):

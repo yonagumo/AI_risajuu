@@ -11,14 +11,14 @@ from google.genai.types import (
 )
 
 
-
 def split_message_text(text, chunk_size=1500):
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
 
 class Reply:
-    text = []
-    attachments = []
+    def __init__(self):
+        self.text = []
+        self.attachments = []
 
 
 class AI_risajuu:

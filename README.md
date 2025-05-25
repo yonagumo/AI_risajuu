@@ -1,2 +1,2 @@
 # AIりさじゅう
-Gemini APIを利用したDiscordボットです。
+AIりさじゅうDiscordBotの魔改造フォーク

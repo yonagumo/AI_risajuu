@@ -1,6 +1,4 @@
 import os
-import io
-import datetime
 import discord
 from dotenv import load_dotenv
 from keep_alive import keep_alive
@@ -35,23 +33,32 @@ class Risaju_discord_client(discord.Client):
         print(f"We have logged in as {self.user}")
 
     async def on_message(self, message):
-        if message.author == self.user or message.author.bot:
+        if message.author == self.user or message.content.startswith(
+            "あ、これはりさじゅう反応しないでね"
+        ):
             return
 
-        if message.channel.name in os.getenv("TARGET_CHANNEL_NAME").split(",") or self.user.mentioned_in(message):
-            reply = self.risajuu.chat(message.content)
+        if message.author.bot:
+            return
+
+        if message.channel.name in os.getenv("TARGET_CHANNEL_NAME").split(
+            ","
+        ) or self.user.mentioned_in(message):
+            reply = self.risajuu.chat(
+                message.content, message.attachments if len(message.attachments) > 0 else None
+            )
 
             for chunk in reply.text:
                 await message.channel.send(chunk)
 
-            if reply.export_history:
-                with io.StringIO(reply.export_history) as file:
+            if len(reply.attachments) > 0:
+                for attachment in reply.attachments:
                     await message.channel.send(
                         file=discord.File(
-                            file,
-                            "chat_history_" + str(datetime.datetime.now()) + ".txt",
+                            attachment, filename=os.path.basename(attachment)
                         )
                     )
+                    os.remove(attachment)
 
 
 if __name__ == "__main__":

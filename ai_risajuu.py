@@ -1,5 +1,7 @@
 import os
-
+import datetime
+import json
+import tempfile
 from google import genai
 from google.genai import types
 from google.genai.types import (
@@ -12,87 +14,102 @@ from google.genai.types import (
 def split_message_text(text, chunk_size=1500):
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
+
 class Reply:
     text = []
-    export_history = None
+    attachments = []
+
 
 class AI_risajuu:
     def __init__(self, api_key, system_instruction):
         self.model_name = os.getenv("MAIN_MODEL_NAME")
         self.google_search_tool = Tool(google_search=GoogleSearch())
+        self.url_context_tool = Tool(url_context=types.UrlContext())
         self.client = genai.Client(api_key=api_key)
         self.chat_history = []
         self.system_instruction = system_instruction
+        self.current_system_instruction = system_instruction
 
-    def chat(self, input_text):
+    async def chat(self, input_text, attachments):
 
         if input_text.startswith("あ、これはりさじゅう反応しないでね"):
             return
-        
+
         reply = Reply()
 
         if input_text.endswith("リセット"):
             self.chat_history = []
+            self.current_system_instruction = self.system_instruction
             reply.text = ["履歴をリセットしたじゅう！"]
             return reply
 
-        #if input_text.startswith("カスタム"):
-        #    system_instruction = input_text.replace("カスタム", "") + initial_message
-        #    chat_history = []
-        #    await message.channel.send(
-        #        "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
-        #    )
-        #    return
-
         if input_text.endswith("エクスポート"):
             reply.text = ["履歴をエクスポートするじゅう！"]
-            reply.export_history = str(self.chat_history)
+            json_data = json.dumps(self.chat_history, ensure_ascii=False, indent=2)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            prefix = f"risajuu_history_{timestamp}_"
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=".json", prefix=prefix, mode="w", encoding="utf-8"
+            ) as file:
+                file.write(json_data)
+                file.flush()
+                reply.attachments.append(file.name)
             return reply
 
-        # if input_text.endswith("インポート"):
-        #     answer.text = ["履歴をインポートするじゅう！"]
-        #     if message.attachments:
-        #         attachment = message.attachments[0]
-        #         if attachment.filename.endswith(".txt"):
-        #             file = await attachment.read()
-        #             self.chat_history = eval(file.decode("utf-8"))
-        #             answer.text = ["履歴をインポートしたじゅう！"]
-        #         else:
-        #             answer.text = ["テキストファイルを添付してほしいじゅう！"]
-        #     else:
-        #         answer.text = ["テキストファイルを添付してほしいじゅう！"]
-        #     return
+        if input_text.startswith("カスタム"):
+            custom_instruction = input_text.replace("カスタム", "").strip()
+            if custom_instruction:
+                self.current_system_instruction = custom_instruction
+                reply.text = [
+                    "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
+                ]
+            else:
+                reply.text = ["カスタム履歴を指定してほしいじゅう！"]
+            return reply
+
+        if input_text.startswith("インポート"):
+            if (
+                len(attachments) == 1
+                and attachments[0].filename.lower().endswith(".json")
+            ):
+                json_data = await attachments[0].read()
+                self.chat_history.append(json.loads(json_data.decode("utf-8")))
+                reply.text = ["履歴をインポートしたじゅう！"]
+            else:
+                reply.text = [
+                    "インポートするには、1つのJSONファイルを添付してほしいじゅう！"
+                ]
 
         self.chat_history.append({"role": "user", "parts": [input_text]})
         answer = self.generate_answer(str(self.chat_history))
-        self.chat_history.append({"role": "model", "parts": [answer.text]})
+        self.chat_history.append({"role": "model", "parts": [answer.text.strip()]})
 
         reply.text = split_message_text(answer.text)
         return reply
-    
+
     def generate_answer(self, history):
         return self.client.models.generate_content(
-            model = self.model_name,
-            contents = history,
-            config = GenerateContentConfig(
-                system_instruction = self.system_instruction,
-                tools = [self.google_search_tool if "gemini-2" in self.model_name else None],
-                safety_settings = [
+            model=self.model_name,
+            contents=history,
+            config=GenerateContentConfig(
+                system_instruction=self.system_instruction,
+                tools=[self.google_search_tool, self.url_context_tool],
+                safety_settings=[
                     types.SafetySetting(
-                        category = types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                        threshold = types.HarmBlockThreshold.BLOCK_NONE,
+                        category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                        threshold=types.HarmBlockThreshold.BLOCK_NONE,
                     ),
                     types.SafetySetting(
-                        category = types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                        threshold = types.HarmBlockThreshold.BLOCK_NONE,
+                        category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                        threshold=types.HarmBlockThreshold.BLOCK_NONE,
                     ),
                     types.SafetySetting(
-                        category = types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                        threshold = types.HarmBlockThreshold.BLOCK_NONE,
+                        category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                        threshold=types.HarmBlockThreshold.BLOCK_NONE,
                     ),
                     types.SafetySetting(
-                        category = types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                        threshold = types.HarmBlockThreshold.BLOCK_NONE,
+                        category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                        threshold=types.HarmBlockThreshold.BLOCK_NONE,
                     ),
                 ],
             ),

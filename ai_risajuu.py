@@ -11,6 +11,7 @@ from google.genai.types import (
 )
 
 
+
 def split_message_text(text, chunk_size=1500):
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
@@ -57,14 +58,13 @@ class AI_risajuu:
             return reply
 
         if input_text.startswith("カスタム"):
-            custom_instruction = input_text.replace("カスタム", "").strip()
-            if custom_instruction:
-                self.current_system_instruction = custom_instruction
-                reply.text = [
-                    "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
-                ]
-            else:
-                reply.text = ["カスタム履歴を指定してほしいじゅう！"]
+            custom_instruction = input_text.replace("カスタム", "")
+            with open("common_prompt.md", "r", encoding="utf-8") as f:
+                common_prompt = f.read()
+                self.current_system_instruction = custom_instruction+common_prompt
+            reply.text = [
+                "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
+            ]
             return reply
 
         if input_text.startswith("インポート"):
@@ -73,12 +73,15 @@ class AI_risajuu:
                 and attachments[0].filename.lower().endswith(".json")
             ):
                 json_data = await attachments[0].read()
-                self.chat_history.append(json.loads(json_data.decode("utf-8")))
+                json_str = json_data.decode("utf-8").replace("\n", "")
+                self.chat_history.append(json.loads(json_str))
                 reply.text = ["履歴をインポートしたじゅう！"]
+                return reply
             else:
                 reply.text = [
                     "インポートするには、1つのJSONファイルを添付してほしいじゅう！"
                 ]
+                return reply
 
         self.chat_history.append({"role": "user", "parts": [input_text]})
         answer = self.generate_answer(str(self.chat_history))
@@ -92,7 +95,7 @@ class AI_risajuu:
             model=self.model_name,
             contents=history,
             config=GenerateContentConfig(
-                system_instruction=self.system_instruction,
+                system_instruction=self.current_system_instruction,
                 tools=[self.google_search_tool, self.url_context_tool],
                 safety_settings=[
                     types.SafetySetting(

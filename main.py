@@ -2,7 +2,6 @@ import os
 import discord
 from dotenv import load_dotenv
 from keep_alive import keep_alive
-
 from ai_risajuu import AI_risajuu
 
 
@@ -10,8 +9,11 @@ def main():
     load_dotenv()
 
     google_api_key = os.environ["GOOGLE_API_KEY"]
-    with open("prompt.md", "r", encoding="utf-8") as f:
+    with open("default_prompt.md", "r", encoding="utf-8") as f:
         system_prompt = f.read()
+    with open("common_prompt.md", "r", encoding="utf-8") as f:
+        common_prompt = f.read()
+        system_prompt = system_prompt+common_prompt
     risajuu = AI_risajuu(google_api_key, system_prompt)
 
     # Web サーバの立ち上げ
@@ -33,10 +35,6 @@ class Risaju_discord_client(discord.Client):
         print(f"We have logged in as {self.user}")
 
     async def on_message(self, message):
-        if message.author == self.user or message.content.startswith(
-            "あ、これはりさじゅう反応しないでね"
-        ):
-            return
 
         if message.author.bot:
             return
@@ -44,12 +42,16 @@ class Risaju_discord_client(discord.Client):
         if message.channel.name in os.getenv("TARGET_CHANNEL_NAME").split(
             ","
         ) or self.user.mentioned_in(message):
-            reply = self.risajuu.chat(
-                message.content, message.attachments if len(message.attachments) > 0 else None
+            reply = await self.risajuu.chat(
+                message.content, message.attachments
             )
 
-            for chunk in reply.text:
-                await message.channel.send(chunk)
+            if reply.text is None:
+                return
+
+            if len(reply.text) > 0:
+                for chunk in reply.text:
+                    await message.channel.send(chunk)
 
             if len(reply.attachments) > 0:
                 for attachment in reply.attachments:

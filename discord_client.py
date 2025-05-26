@@ -1,6 +1,5 @@
-import io
 import os
-import datetime
+
 import discord
 
 
@@ -15,16 +14,11 @@ class Risajuu_discord_client(discord.Client):
         print(f"We have logged in as {self.user}")
 
     async def on_message(self, message):
-
         if message.author.bot:
             return
 
-        if message.channel.name in os.getenv("TARGET_CHANNEL_NAME").split(
-            ","
-        ) or self.user.mentioned_in(message):
-            reply = await self.risajuu.chat(
-                message.content, message.attachments
-            )
+        if message.channel.name in os.getenv("TARGET_CHANNEL_NAME").split(",") or self.user.mentioned_in(message):
+            reply = await self.risajuu.chat(message.content, message.attachments)
 
             if reply.text is None:
                 return
@@ -35,9 +29,5 @@ class Risajuu_discord_client(discord.Client):
 
             if len(reply.attachments) > 0:
                 for attachment in reply.attachments:
-                    await message.channel.send(
-                        file=discord.File(
-                            attachment, filename=os.path.basename(attachment)
-                        )
-                    )
+                    await message.channel.send(file=discord.File(attachment, filename=os.path.basename(attachment)))
                     os.remove(attachment)

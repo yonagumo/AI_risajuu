@@ -37,7 +37,7 @@ async def main():
     try:
         await asyncio.gather(manager_discord.start(manager_token), risajuu_discord.start(risajuu_token))
     except asyncio.CancelledError:
-        print("exit")
+        print("\n=== exit ===")
 
 
 if __name__ == "__main__":

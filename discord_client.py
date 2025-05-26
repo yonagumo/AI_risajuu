@@ -4,7 +4,7 @@ from datetime import timedelta, timezone
 
 import discord
 
-from ai_risajuu import newMessage
+from ai_risajuu import Message, Savedata
 
 
 class Manager_discord_client(discord.Client):
@@ -48,27 +48,33 @@ class Risajuu_discord_client(discord.Client):
         if input_text.startswith("カスタム"):
             reply = self.risajuu.custom(input_text.replace("カスタム", ""))
         elif input_text.endswith("エクスポート"):
-            reply = self.risajuu.export_history()
+            reply = self.risajuu.export_savedata()
         elif input_text.endswith("インポート"):
             history = None
             if len(message.attachments) == 1 and message.attachments[0].filename.lower().endswith(".json"):
                 json_data = await message.attachments[0].read()
                 try:
                     json_str = json_data.decode("utf-8").replace("\n", "")
-                    history = json.loads(json_str)
+                    history = Savedata.model_validate_json(json_str)
                 except (json.JSONDecodeError, UnicodeDecodeError):
                     pass
-            reply = self.risajuu.import_history(history)
+            reply = self.risajuu.import_savedata(history)
         else:
             created = message.created_at.astimezone(timezone(timedelta(hours=9))).isoformat()
-            content = newMessage(False, message.author.display_name, message.author.name, created, input_text)
+            content = Message(
+                bot=False,
+                author_display_name=message.author.display_name,
+                author_name=message.author.name,
+                created_at=created,
+                body=input_text,
+            )
             reply = self.risajuu.chat(content, message.attachments)
 
         if reply.texts is None:
             return
 
-        if len(reply.text) > 0:
-            for chunk in reply.text:
+        if len(reply.texts) > 0:
+            for chunk in reply.texts:
                 await message.channel.send(chunk)
 
         if len(reply.attachments) > 0:

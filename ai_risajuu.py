@@ -1,7 +1,8 @@
-import os
 import datetime
 import json
+import os
 import tempfile
+
 from google import genai
 from google.genai import types
 from google.genai.types import (
@@ -11,14 +12,14 @@ from google.genai.types import (
 )
 
 
-
 def split_message_text(text, chunk_size=1500):
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
 
 class Reply:
-    text = []
-    attachments = []
+    def __init__(self):
+        self.text = []
+        self.attachments = []
 
 
 class AI_risajuu:
@@ -32,7 +33,6 @@ class AI_risajuu:
         self.current_system_instruction = system_instruction
 
     async def chat(self, input_text, attachments):
-
         if input_text.startswith("あ、これはりさじゅう反応しないでね"):
             return
 
@@ -61,26 +61,21 @@ class AI_risajuu:
             custom_instruction = input_text.replace("カスタム", "")
             with open("common_prompt.md", "r", encoding="utf-8") as f:
                 common_prompt = f.read()
-                self.current_system_instruction = custom_instruction+common_prompt
+                self.current_system_instruction = custom_instruction + common_prompt
             reply.text = [
                 "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
             ]
             return reply
 
         if input_text.startswith("インポート"):
-            if (
-                len(attachments) == 1
-                and attachments[0].filename.lower().endswith(".json")
-            ):
+            if len(attachments) == 1 and attachments[0].filename.lower().endswith(".json"):
                 json_data = await attachments[0].read()
                 json_str = json_data.decode("utf-8").replace("\n", "")
                 self.chat_history.append(json.loads(json_str))
                 reply.text = ["履歴をインポートしたじゅう！"]
                 return reply
             else:
-                reply.text = [
-                    "インポートするには、1つのJSONファイルを添付してほしいじゅう！"
-                ]
+                reply.text = ["インポートするには、1つのJSONファイルを添付してほしいじゅう！"]
                 return reply
 
         self.chat_history.append({"role": "user", "parts": [input_text]})

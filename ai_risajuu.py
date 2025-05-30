@@ -41,7 +41,6 @@ class AI_risajuu:
         if input_text.endswith("リセット"):
             self.chat_history = []
             self.uploaded_files = {}
-            self.uploaded_file = None
             for file in self.client.files.list():
                 self.client.files.delete(name=file.name)
             self.current_system_instruction = self.system_instruction

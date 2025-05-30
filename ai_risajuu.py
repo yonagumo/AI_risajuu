@@ -29,7 +29,6 @@ class AI_risajuu:
         self.client = genai.Client(api_key=api_key)
         self.chat_history = []
         self.uploaded_files = {}
-        self.uploaded_file = None
         self.system_instruction = system_instruction
         self.current_system_instruction = system_instruction
 
@@ -110,8 +109,6 @@ class AI_risajuu:
         return reply
 
     def generate_answer(self, history, uploaded_files):
-        print(history)
-        print(uploaded_files)
         return self.client.models.generate_content(
             model=self.model_name,
             contents=[str(history), uploaded_files.values() if uploaded_files else ""],

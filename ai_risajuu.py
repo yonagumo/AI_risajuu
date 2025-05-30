@@ -79,20 +79,22 @@ class AI_risajuu:
 
         self.chat_history.append(input)
         response = self.generate_answer(self.chat_history)
-        message = Message(
-            bot=True,
-            author_display_name="AIりさじゅう",
-            author_name="AIりさじゅう#2535",
-            created_at=input.created_at,
-            body=response.text,
-        )
-        self.chat_history.append(message)
 
-        for part in response.candidates[0].content.parts:
-            if part.thought:
-                reply.thoughts.append(part.text)
+        for chunk in response:
+            message = Message(
+                bot=True,
+                author_display_name="AIりさじゅう",
+                author_name="AIりさじゅう#2535",
+                created_at=input.created_at,
+                body=chunk.text,
+            )
+            self.chat_history.append(message)
 
-        reply.texts = split_message_text(message.body)
+            for part in chunk.candidates[0].content.parts:
+                if part.thought:
+                    reply.thoughts.append(part.text)
+
+            reply.texts.extend(split_message_text(message.body))
 
         if input.body.endswith("リセット"):
             self.chat_history = []
@@ -111,7 +113,7 @@ class AI_risajuu:
             content = types.Content(role=role, parts=[types.Part.from_text(text=jsonstr)])
             contents.append(content)
 
-        return self.client.models.generate_content(
+        return self.client.models.generate_content_stream(
             model=self.model_name,
             contents=contents,
             config=GenerateContentConfig(

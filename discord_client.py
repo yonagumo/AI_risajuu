@@ -15,8 +15,8 @@ class Manager_discord_client(discord.Client):
     async def on_ready(self):
         print(f"We have logged in as {self.user}")
 
-    async def test_message(self, user, channel_id):
-        await self.get_channel(channel_id).send(f"{user.name}によって呼び出されました")
+    async def logging(self, channel_id, log):
+        await self.get_channel(channel_id).send(f"```{log}```")
 
 
 class Risajuu_discord_client(discord.Client):
@@ -39,11 +39,6 @@ class Risajuu_discord_client(discord.Client):
                 await self.reply_to_message(message)
 
     async def reply_to_message(self, message):
-        if message.content.startswith("呼び出し"):
-            await message.channel.send(f"お～い！{message.author.display_name}が呼んでるじゅう！")
-            await self.manager.test_message(self.user, message.channel.id)
-            return
-
         input_text = message.content
         if input_text.startswith("カスタム"):
             reply = self.risajuu.custom(input_text.replace("カスタム", ""))
@@ -74,6 +69,8 @@ class Risajuu_discord_client(discord.Client):
             return
 
         if len(reply.texts) > 0:
+            for t in reply.thoughts:
+                await self.manager.logging(message.channel.id, "thought: " + t)
             for chunk in reply.texts:
                 await message.channel.send(chunk)
 

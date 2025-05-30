@@ -25,6 +25,7 @@ class Savedata(BaseModel):
 
 class Reply(BaseModel):
     texts: list[str] = []
+    thoughts: list[str] = []
     attachments: list[str] = []
 
 
@@ -86,6 +87,11 @@ class AI_risajuu:
             body=response.text,
         )
         self.chat_history.append(message)
+
+        for part in response.candidates[0].content.parts:
+            if part.thought:
+                reply.thoughts.append(part.text)
+
         reply.texts = split_message_text(message.body)
 
         if input.body.endswith("リセット"):
@@ -111,6 +117,7 @@ class AI_risajuu:
             config=GenerateContentConfig(
                 system_instruction=self.common_instruction + self.current_system_instruction,
                 # tools=self.tools,
+                # thinking_config=types.ThinkingConfig(include_thoughts=True),
                 safety_settings=[
                     types.SafetySetting(
                         category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,

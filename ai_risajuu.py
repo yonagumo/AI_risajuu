@@ -9,6 +9,8 @@ from google.genai import types
 from google.genai.types import GenerateContentConfig, Tool
 from pydantic import BaseModel
 
+import test_function
+
 
 class Message(BaseModel):
     bot: bool
@@ -25,7 +27,7 @@ class Savedata(BaseModel):
 
 class Reply(BaseModel):
     texts: list[str] = []
-    thoughts: list[str] = []
+    logs: list[str] = []
     attachments: list[str] = []
 
 
@@ -79,6 +81,20 @@ class AI_risajuu:
 
         self.chat_history.append(input)
         response = self.generate_answer(self.chat_history)
+
+        tool_call = response.candidates[0].content.parts[0].function_call
+        if tool_call:
+            reply.logs.append("call: " + tool_call.model_dump_json())
+            if tool_call.name == "get_whether_forecast":
+                result = test_function.get_whether_forecast(**tool_call.args)
+                reply.logs.append(f"result: {result}")
+            function_response_part = types.Part.from_function_response(name=tool_call.name, response={"result": result})
+            append_contents = [
+                types.Content(role="model", parts=[types.Part(function_call=tool_call)]),
+                types.Content(role="user", parts=[function_response_part]),
+            ]
+            response = self.generate_answer(self.chat_history, append_contents=append_contents)
+
         message = Message(
             bot=True,
             author_display_name="AIりさじゅう",
@@ -90,7 +106,7 @@ class AI_risajuu:
 
         for part in response.candidates[0].content.parts:
             if part.thought:
-                reply.thoughts.append(part.text)
+                reply.logs.append("thought: " + part.text)
 
         reply.texts = split_message_text(message.body)
 
@@ -101,7 +117,7 @@ class AI_risajuu:
 
         return reply
 
-    def generate_answer(self, history):
+    def generate_answer(self, history, append_contents=[]):
         contents = []
         for h in history:
             role = "model" if h.bot else "user"
@@ -111,12 +127,15 @@ class AI_risajuu:
             content = types.Content(role=role, parts=[types.Part.from_text(text=jsonstr)])
             contents.append(content)
 
+        contents.extend(append_contents)
+
         return self.client.models.generate_content(
             model=self.model_name,
             contents=contents,
             config=GenerateContentConfig(
                 system_instruction=self.common_instruction + self.current_system_instruction,
                 # tools=self.tools,
+                tools=[types.Tool(function_declarations=[test_function.get_whether_forecast_declaration])],
                 # thinking_config=types.ThinkingConfig(include_thoughts=True),
                 safety_settings=[
                     types.SafetySetting(

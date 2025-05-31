@@ -20,6 +20,8 @@ class Risajuu_discord_client(discord.Client):
         if message.channel.name in os.getenv("TARGET_CHANNEL_NAME").split(",") or self.user.mentioned_in(message):
             async with message.channel.typing():
                 await self.reply_to_message(message)
+        else:
+
 
     async def reply_to_message(self, message):
         reply = await self.risajuu.chat(message.content, message.attachments)

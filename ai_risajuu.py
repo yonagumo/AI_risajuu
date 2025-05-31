@@ -35,7 +35,7 @@ class AI_risajuu:
         self.current_system_instruction = system_instruction
 
     async def react(self, input_text):
-        if random.random() < 0.1:
+        if random.random() < 0.4:
             emoji = self.client.models.generate_content(
                 model=self.sub_model_name,
                 contents=["""

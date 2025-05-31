@@ -50,6 +50,11 @@ class AI_risajuu:
         self.current_system_instruction = system_instruction
         self.common_instruction = common_instruction
         self.include_thoughts = False
+        self.logging = False
+
+    def log(self, log: str):
+        if self.logging:
+            print(log)
 
     def custom(self, custom_instruction: str) -> Reply:
         self.current_system_instruction = custom_instruction
@@ -83,57 +88,57 @@ class AI_risajuu:
         if input.body.startswith("あ、これはりさじゅう反応しないでね"):
             return Reply()
 
-        print(f"回答生成開始：{input.body}")
+        self.log(f"回答生成開始：{input.body}")
         self.chat_history.append(input)
         response = self.generate_answer(self.chat_history)
 
-        print("応答開始")
+        self.log("応答開始")
         reply = self.call_and_response(response, input.created_at)
 
-        print("リセット確認")
+        self.log("リセット確認")
         if input.body.endswith("リセット"):
             self.chat_history = []
             self.current_system_instruction = self.system_instruction
             reply.texts.append("履歴をリセットしたじゅう！")
 
-        print("回答生成完了")
+        self.log("回答生成完了")
         return reply
 
     def call_and_response(self, response, created_at):
-        print("call_and_response")
+        self.log("call_and_response")
         reply = Reply()
         for ci, chunk in enumerate(response):
-            print(f"chunk: {ci}")
+            self.log(f"chunk: {ci}")
             call = False
             for pi, part in enumerate(chunk.candidates[0].content.parts):
-                print(f"part: {pi}")
+                self.log(f"part: {pi}")
                 if not part.text:
-                    print("not text")
+                    self.log("not text")
                     tool_call = part.function_call
                     if tool_call:
-                        print("関数呼び出し")
+                        self.log("関数呼び出し")
                         call = True
                         # reply.logs.append("call: " + tool_call.model_dump_json())
                         log = "call: " + tool_call.model_dump_json()
                         if tool_call.name == "get_whether_forecast":
-                            print("get_whether_forecast")
+                            self.log("get_whether_forecast")
                             result = test_function.get_whether_forecast(**tool_call.args)
                             # reply.logs.append(f"result: {result}")
                             log += f"\nresult: {result}"
-                        print(log)
+                        self.log(log)
                         log = "```" + log + "```"
                         reply.texts.append(log)
                         call_contents = Function_calling(call=tool_call, result=result)
                         self.chat_history.append(call_contents)
                     else:
-                        print("*unreachable* not function calling")
+                        self.log("*unreachable* not function calling")
                         continue
                 elif part.thought:
-                    print("思考")
+                    self.log("思考")
                     # reply.logs.append("thought: " + part.text)
                     reply.texts.append("```thought: " + part.text + "```")
                 else:
-                    print("メッセージ本体：" + chunk.text)
+                    self.log("メッセージ本体：" + chunk.text)
                     message = Message(
                         bot=True,
                         author_display_name="AIりさじゅう",
@@ -144,15 +149,15 @@ class AI_risajuu:
                     self.chat_history.append(message)
                     reply.texts.extend(split_message_text(message.body))
             if call:
-                print("関数の戻り値をもとに回答生成")
+                self.log("関数の戻り値をもとに回答生成")
                 call_response = self.generate_answer(self.chat_history)
-                print("再帰")
+                self.log("再帰")
                 r = self.call_and_response(call_response, created_at)
-                print("再帰完了")
+                self.log("再帰完了")
                 reply.texts.extend(r.texts)
                 reply.logs.extend(r.logs)
                 reply.attachments.extend(r.attachments)
-        print("return from call_and_response")
+        self.log("return from call_and_response")
         return reply
 
     def generate_answer(self, history):
@@ -173,7 +178,7 @@ class AI_risajuu:
                 ]
                 contents.extend(append_contents)
             else:
-                print("*unreachable* broken history")
+                self.log("*unreachable* broken history")
 
         return self.client.models.generate_content_stream(
             model=self.model_name,

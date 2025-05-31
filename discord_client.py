@@ -43,6 +43,14 @@ class Risajuu_discord_client(discord.Client):
                 self.risajuu.include_thoughts = False
                 await self.manager.logging(message.channel.id, "self.risajuu.include_thoughts = False")
                 return
+            elif message.content.startswith("logging:on"):
+                self.risajuu.logging = True
+                await self.manager.logging(message.channel.id, "self.risajuu.logging = True")
+                return
+            elif message.content.startswith("logging:off"):
+                self.risajuu.logging = False
+                await self.manager.logging(message.channel.id, "self.risajuu.logging = False")
+                return
 
             async with message.channel.typing():
                 await self.reply_to_message(message)

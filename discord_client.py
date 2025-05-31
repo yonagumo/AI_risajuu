@@ -35,6 +35,15 @@ class Risajuu_discord_client(discord.Client):
             return
 
         if message.channel.name in os.getenv("TARGET_CHANNEL_NAME").split(",") or self.user.mentioned_in(message):
+            if message.content.startswith("thinking:on"):
+                self.risajuu.include_thoughts = True
+                await self.manager.logging(message.channel.id, "self.risajuu.include_thoughts = True")
+                return
+            elif message.content.startswith("thinking:off"):
+                self.risajuu.include_thoughts = False
+                await self.manager.logging(message.channel.id, "self.risajuu.include_thoughts = False")
+                return
+
             async with message.channel.typing():
                 await self.reply_to_message(message)
 

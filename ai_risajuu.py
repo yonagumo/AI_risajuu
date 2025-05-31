@@ -1,8 +1,7 @@
+import os
 import datetime
 import json
-import os
 import tempfile
-
 from google import genai
 from google.genai import types
 from google.genai.types import (
@@ -29,6 +28,7 @@ class AI_risajuu:
         self.url_context_tool = Tool(url_context=types.UrlContext())
         self.client = genai.Client(api_key=api_key)
         self.chat_history = []
+        self.uploaded_files = {}
         self.system_instruction = system_instruction
         self.current_system_instruction = system_instruction
 
@@ -40,6 +40,9 @@ class AI_risajuu:
 
         if input_text.endswith("リセット"):
             self.chat_history = []
+            self.uploaded_files = {}
+            for file in self.client.files.list():
+                self.client.files.delete(name=file.name)
             self.current_system_instruction = self.system_instruction
             reply.text = ["履歴をリセットしたじゅう！"]
             return reply
@@ -68,27 +71,46 @@ class AI_risajuu:
             return reply
 
         if input_text.startswith("インポート"):
-            if len(attachments) == 1 and attachments[0].filename.lower().endswith(".json"):
+            if all([len(attachments) == 1, attachments[0].filename.endswith(".json")]):
                 json_data = await attachments[0].read()
                 json_str = json_data.decode("utf-8").replace("\n", "")
                 self.chat_history.append(json.loads(json_str))
                 reply.text = ["履歴をインポートしたじゅう！"]
                 return reply
             else:
-                reply.text = ["インポートするには、1つのJSONファイルを添付してほしいじゅう！"]
+                reply.text = [
+                    "インポートするには、1つのJSONファイルを添付してほしいじゅう！"
+                ]
                 return reply
 
-        self.chat_history.append({"role": "user", "parts": [input_text]})
-        answer = self.generate_answer(str(self.chat_history))
-        self.chat_history.append({"role": "model", "parts": [answer.text.strip()]})
+        self.chat_history.append(
+            {
+                "role": "user",
+                "content": input_text,
+            }
+        )
+        if attachments:
+            for attachment in attachments:
+                await attachment.save(attachment.filename)
+                self.uploaded_files[attachment.filename] = self.client.files.upload(
+                    file="./" + attachment.filename,
+                )
+                os.remove(attachment.filename)
 
+        answer = self.generate_answer(self.chat_history, self.uploaded_files)
+        self.chat_history.append(
+            {
+                "role": "model",
+                "content": answer.text,
+            }
+        )
         reply.text = split_message_text(answer.text)
         return reply
 
-    def generate_answer(self, history):
+    def generate_answer(self, history, uploaded_files):
         return self.client.models.generate_content(
             model=self.model_name,
-            contents=history,
+            contents=[str(history)] + (list(uploaded_files.values()) if uploaded_files else []),
             config=GenerateContentConfig(
                 system_instruction=self.current_system_instruction,
                 tools=[self.google_search_tool, self.url_context_tool],

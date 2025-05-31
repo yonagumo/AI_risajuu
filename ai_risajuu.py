@@ -38,10 +38,14 @@ class AI_risajuu:
         if random.random() < 0.1:
             emoji = self.client.models.generate_content(
                 model=self.sub_model_name,
-                contents=[
-                    "「"
+                contents=["""
+                        # 指示
+                        「"""
                     + input_text
-                    + "」というメッセージへのリアクションとして適切な絵文字を一つだけ選び、その絵文字***のみ***を出力してください。"
+                    + """」というメッセージへのリアクションとして適切な絵文字を一つだけ選んでください。
+                    # 注意
+                    出力には**絵文字一文字のみ**を取ってください。余計なテキストや説明は含めないでください。
+                    """
                 ],
                 config=GenerateContentConfig(
                     safety_settings=[

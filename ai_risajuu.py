@@ -2,6 +2,7 @@ import os
 import datetime
 import json
 import tempfile
+import random
 from google import genai
 from google.genai import types
 from google.genai.types import (
@@ -23,7 +24,8 @@ class Reply:
 
 class AI_risajuu:
     def __init__(self, api_key, system_instruction):
-        self.model_name = os.getenv("MAIN_MODEL_NAME")
+        self.main_model_name = os.getenv("MAIN_MODEL_NAME")
+        self.sub_model_name = os.getenv("SUB_MODEL_NAME")
         self.google_search_tool = Tool(google_search=GoogleSearch())
         self.url_context_tool = Tool(url_context=types.UrlContext())
         self.client = genai.Client(api_key=api_key)
@@ -31,6 +33,44 @@ class AI_risajuu:
         self.uploaded_files = {}
         self.system_instruction = system_instruction
         self.current_system_instruction = system_instruction
+
+    async def react(self, input_text):
+        if random.random() < float(os.getenv("REACTION_PROBABILITY")):
+            emoji = self.client.models.generate_content(
+                model=self.sub_model_name,
+                contents=["""
+                        # 指示
+                        「"""
+                    + input_text
+                    + """」というメッセージへのリアクションとして適切な絵文字を一つだけ選んでください。
+                    # 注意
+                    出力には**絵文字一文字のみ**を取ってください。余計なテキストや説明は**絶対に**含めず、**絵文字一文字のみ**を出力してください。
+                    """
+                ],
+                config=GenerateContentConfig(
+                    safety_settings=[
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                        ),
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                        ),
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                        ),
+                        types.SafetySetting(
+                            category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                            threshold=types.HarmBlockThreshold.BLOCK_NONE,
+                        ),
+                    ],
+                ),
+            )
+            return emoji.text.strip()
+        else:
+            return None
 
     async def chat(self, input_text, attachments):
         if input_text.startswith("あ、これはりさじゅう反応しないでね"):

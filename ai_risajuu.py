@@ -35,7 +35,7 @@ class AI_risajuu:
         self.current_system_instruction = system_instruction
 
     async def react(self, input_text):
-        if random.random() < 0.4:
+        if random.random() < float(os.getenv("REACTION_PROBABILITY")):
             emoji = self.client.models.generate_content(
                 model=self.sub_model_name,
                 contents=["""
@@ -44,7 +44,7 @@ class AI_risajuu:
                     + input_text
                     + """」というメッセージへのリアクションとして適切な絵文字を一つだけ選んでください。
                     # 注意
-                    出力には**絵文字一文字のみ**を取ってください。余計なテキストや説明は含めないでください。
+                    出力には**絵文字一文字のみ**を取ってください。余計なテキストや説明は**絶対に**含めず、**絵文字一文字のみ**を出力してください。
                     """
                 ],
                 config=GenerateContentConfig(

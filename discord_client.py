@@ -1,6 +1,5 @@
-import io
 import os
-import datetime
+
 import discord
 
 
@@ -15,29 +14,24 @@ class Risajuu_discord_client(discord.Client):
         print(f"We have logged in as {self.user}")
 
     async def on_message(self, message):
-
         if message.author.bot:
             return
 
-        if message.channel.name in os.getenv("TARGET_CHANNEL_NAME").split(
-            ","
-        ) or self.user.mentioned_in(message):
-            reply = await self.risajuu.chat(
-                message.content, message.attachments
-            )
+        if message.channel.name in os.getenv("TARGET_CHANNEL_NAME").split(",") or self.user.mentioned_in(message):
+            async with message.channel.typing():
+                await self.reply_to_message(message)
 
-            if reply.text is None:
-                return
+    async def reply_to_message(self, message):
+        reply = await self.risajuu.chat(message.content, message.attachments)
 
-            if len(reply.text) > 0:
-                for chunk in reply.text:
-                    await message.channel.send(chunk)
+        if reply.text is None:
+            return
 
-            if len(reply.attachments) > 0:
-                for attachment in reply.attachments:
-                    await message.channel.send(
-                        file=discord.File(
-                            attachment, filename=os.path.basename(attachment)
-                        )
-                    )
-                    os.remove(attachment)
+        if len(reply.text) > 0:
+            for chunk in reply.text:
+                await message.channel.send(chunk)
+
+        if len(reply.attachments) > 0:
+            for attachment in reply.attachments:
+                await message.channel.send(file=discord.File(attachment, filename=os.path.basename(attachment)))
+                os.remove(attachment)

@@ -20,7 +20,10 @@ class Risajuu_discord_client(discord.Client):
             async with message.channel.typing():
                 await self.reply_to_message(message)
         else:
-            await message.add_reaction(await self.risajuu.react(message.content))
+            try:
+                await message.add_reaction(await self.risajuu.react(message.content))
+            except:
+                None
 
     async def reply_to_message(self, message):
         reply = await self.risajuu.chat(message.content, message.attachments)

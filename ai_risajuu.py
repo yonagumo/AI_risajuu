@@ -64,7 +64,6 @@ class AI_risajuu:
                     ],
                 ),
             )
-            print(emoji)
             return emoji.text.strip()
         else:
             return None

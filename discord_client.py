@@ -68,11 +68,11 @@ class Risajuu_discord_client(discord.Client):
         if reply.texts is None:
             return
 
-        if len(reply.texts) > 0:
-            for t in reply.thoughts:
-                await self.manager.logging(message.channel.id, "thought: " + t)
-            for chunk in reply.texts:
-                await message.channel.send(chunk)
+        for t in reply.logs:
+            await self.manager.logging(message.channel.id, t)
+
+        for chunk in reply.texts:
+            await message.channel.send(chunk)
 
         if len(reply.attachments) > 0:
             for attachment in reply.attachments:

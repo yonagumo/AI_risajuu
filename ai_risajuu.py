@@ -20,20 +20,57 @@ class Message(BaseModel):
     body: str
 
 
-class Function_calling(BaseModel):
+class FunctionCalling(BaseModel):
     call: types.FunctionCall
     result: dict[str, Any]
 
 
 class Savedata(BaseModel):
     custom_instruction: Optional[str]
-    history: list[Message | Function_calling]
+    history: list[Message | FunctionCalling]
 
 
 class Reply(BaseModel):
     texts: list[str] = []
     logs: list[str] = []
     attachments: list[str] = []
+
+
+class TextBuffer:
+    def __init__(self):
+        self.text = None
+
+    def append(self, text):
+        self.text = (self.text or "") + text
+
+    def pop(self, created_at):
+        if self.text is None:
+            return None
+        else:
+            texts = self.text.rsplit(sep="\n", maxsplit=1)
+            if len(texts) >= 2:
+                self.text = texts[1]
+                message = Message(
+                    bot=True,
+                    author_display_name="AIりさじゅう",
+                    author_name="AIりさじゅう#2535",
+                    created_at=created_at,
+                    body=texts[0],
+                )
+                return message
+            else:
+                return None
+
+    def flush(self, created_at):
+        message = Message(
+            bot=True,
+            author_display_name="AIりさじゅう",
+            author_name="AIりさじゅう#2535",
+            created_at=created_at,
+            body=self.text,
+        )
+        self.text = None
+        return message
 
 
 def split_message_text(text, chunk_size=1500) -> list[str]:
@@ -58,18 +95,22 @@ class AI_risajuu:
 
     def custom(self, custom_instruction: str) -> Reply:
         self.current_system_instruction = custom_instruction
-        text = ["カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"]
+        text = "カスタム履歴を追加して新たなチャットで開始したじゅう！いつものりさじゅうに戻ってほしくなったら、「リセット」って言うじゅう！"
         return Reply(texts=[text])
 
     def export_savedata(self) -> Reply:
         text = "履歴をエクスポートするじゅう！"
         attachments = []
         # json_data = json.dumps(self.chat_history, ensure_ascii=False, indent=2)
-        instruction = None if self.current_system_instruction == self.system_instruction else self.current_system_instruction
+        instruction = (
+            None if self.current_system_instruction == self.system_instruction else self.current_system_instruction
+        )
         json_data = Savedata(custom_instruction=instruction, history=self.chat_history).model_dump_json(indent=2)
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         prefix = f"risajuu_history_{timestamp}_"
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".json", prefix=prefix, mode="w", encoding="utf-8") as file:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=".json", prefix=prefix, mode="w", encoding="utf-8"
+        ) as file:
             file.write(json_data)
             file.flush()
             attachments.append(file.name)
@@ -107,6 +148,7 @@ class AI_risajuu:
     def call_and_response(self, response, created_at):
         self.log("call_and_response")
         reply = Reply()
+        remain = TextBuffer()
         for ci, chunk in enumerate(response):
             self.log(f"chunk: {ci}")
             call = False
@@ -118,37 +160,45 @@ class AI_risajuu:
                     if tool_call:
                         self.log("関数呼び出し")
                         call = True
+                        if remain.text is not None:
+                            message = remain.flush(created_at)
+                            self.chat_history.append(message)
+                            reply.texts.extend(split_message_text(message.body))
                         # reply.logs.append("call: " + tool_call.model_dump_json())
                         log = "call: " + tool_call.model_dump_json()
-                        if tool_call.name == "get_whether_forecast":
-                            self.log("get_whether_forecast")
-                            result = test_function.get_whether_forecast(**tool_call.args)
+                        if tool_call.name == "get_weather_forecast":
+                            self.log("get_weather_forecast")
+                            result = test_function.get_weather_forecast(**tool_call.args)
                             # reply.logs.append(f"result: {result}")
                             log += f"\nresult: {result}"
                         self.log(log)
                         log = "```" + log + "```"
                         reply.texts.append(log)
-                        call_contents = Function_calling(call=tool_call, result=result)
+                        call_contents = FunctionCalling(call=tool_call, result=result)
                         self.chat_history.append(call_contents)
                     else:
                         self.log("*unreachable* not function calling")
                         continue
                 elif part.thought:
                     self.log("思考")
+                    if remain.text is not None:
+                        message = remain.flush(created_at)
+                        self.chat_history.append(message)
+                        reply.texts.extend(split_message_text(message.body))
                     # reply.logs.append("thought: " + part.text)
                     reply.texts.append("```thought: " + part.text + "```")
                 else:
                     self.log("メッセージ本体：" + chunk.text)
-                    message = Message(
-                        bot=True,
-                        author_display_name="AIりさじゅう",
-                        author_name="AIりさじゅう#2535",
-                        created_at=created_at,
-                        body=chunk.text,
-                    )
-                    self.chat_history.append(message)
-                    reply.texts.extend(split_message_text(message.body))
+                    remain.append(chunk.text)
+                    message = remain.pop(created_at)
+                    if message:
+                        self.chat_history.append(message)
+                        reply.texts.extend(split_message_text(message.body))
             if call:
+                if remain.text is not None:
+                    message = remain.flush(created_at)
+                    self.chat_history.append(message)
+                    reply.texts.append(message.body)
                 self.log("関数の戻り値をもとに回答生成")
                 call_response = self.generate_answer(self.chat_history)
                 self.log("再帰")
@@ -157,6 +207,10 @@ class AI_risajuu:
                 reply.texts.extend(r.texts)
                 reply.logs.extend(r.logs)
                 reply.attachments.extend(r.attachments)
+        if remain.text is not None:
+            message = remain.flush(created_at)
+            self.chat_history.append(message)
+            reply.texts.append(message.body)
         self.log("return from call_and_response")
         return reply
 
@@ -170,8 +224,10 @@ class AI_risajuu:
                 jsonstr = json.dumps(dic, ensure_ascii=False)
                 content = types.Content(role=role, parts=[types.Part.from_text(text=jsonstr)])
                 contents.append(content)
-            elif isinstance(h, Function_calling):
-                function_response_part = types.Part.from_function_response(name=h.call.name, response={"result": h.result})
+            elif isinstance(h, FunctionCalling):
+                function_response_part = types.Part.from_function_response(
+                    name=h.call.name, response={"result": h.result}
+                )
                 append_contents = [
                     types.Content(role="model", parts=[types.Part(function_call=h.call)]),
                     types.Content(role="user", parts=[function_response_part]),
@@ -186,7 +242,7 @@ class AI_risajuu:
             config=GenerateContentConfig(
                 system_instruction=self.common_instruction + self.current_system_instruction,
                 # tools=self.tools,
-                tools=[types.Tool(function_declarations=[test_function.get_whether_forecast_declaration])],
+                tools=[types.Tool(function_declarations=[test_function.get_weather_forecast_declaration])],
                 thinking_config=types.ThinkingConfig(include_thoughts=self.include_thoughts),
                 safety_settings=[
                     types.SafetySetting(

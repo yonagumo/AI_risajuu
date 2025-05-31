@@ -85,8 +85,8 @@ class Risajuu_discord_client(discord.Client):
         if reply.texts is None:
             return
 
-        for t in reply.logs:
-            await self.manager.logging(message.channel.id, t)
+        for log in reply.logs:
+            await self.manager.logging(message.channel.id, log)
 
         for chunk in reply.texts:
             await message.channel.send(chunk)

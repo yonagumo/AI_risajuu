@@ -92,12 +92,12 @@ class AI_risajuu:
                     )
                 )
                 os.remove(attachment.filename)
-
+                
             parts = [text]
             parts.extend(files)
-
             config = GenerateContentConfig(
                 system_instruction=self.common_instruction + self.current_system_instruction,
+
                 tools=[self.google_search_tool, self.url_context_tool],
                 safety_settings=get_safety_settings(),
             )

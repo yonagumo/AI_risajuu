@@ -149,7 +149,7 @@ class AI_risajuu:
 
     def generate_answer(self, history, uploaded_files):
         return self.client.models.generate_content(
-            model=self.model_name,
+            model=self.main_model_name,
             contents=[str(history)] + (list(uploaded_files.values()) if uploaded_files else []),
             config=GenerateContentConfig(
                 system_instruction=self.current_system_instruction,

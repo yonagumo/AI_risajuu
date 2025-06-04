@@ -1,5 +1,4 @@
 import os
-
 import discord
 
 
@@ -16,6 +15,12 @@ class Risajuu_discord_client(discord.Client):
     async def on_message(self, message):
         if message.author.bot:
             return
+
+        if message.channel.permissions_for(message.channel.guild.default_role).view_channel:
+            try:
+                await message.add_reaction(await self.risajuu.react(message.content))
+            except:
+                None
 
         if message.channel.name in os.getenv("TARGET_CHANNEL_NAME").split(",") or self.user.mentioned_in(message):
             async with message.channel.typing():

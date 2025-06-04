@@ -71,6 +71,9 @@ class Risajuu_discord_client(discord.Client):
                 except (json.JSONDecodeError, UnicodeDecodeError):
                     pass
             reply = self.risajuu.import_savedata(history)
+        elif input_text == "poke":
+            created = message.created_at.astimezone(timezone(timedelta(hours=9))).isoformat()
+            reply = self.risajuu.poke(created)
         else:
             created = message.created_at.astimezone(timezone(timedelta(hours=9))).isoformat()
             content = Message(

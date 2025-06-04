@@ -145,12 +145,18 @@ class AI_risajuu:
         self.log("回答生成完了")
         return reply
 
+    def poke(self, created_at) -> Reply:
+        response = self.generate_answer(self.chat_history)
+        reply = self.call_and_response(response, created_at)
+        return reply
+
     def call_and_response(self, response, created_at):
         self.log("call_and_response")
         reply = Reply()
         remain = TextBuffer()
         for ci, chunk in enumerate(response):
             self.log(f"chunk: {ci}")
+            self.log(chunk.model_dump_json())
             call = False
             for pi, part in enumerate(chunk.candidates[0].content.parts):
                 self.log(f"part: {pi}")

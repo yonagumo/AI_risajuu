@@ -30,3 +30,14 @@ def get_weather_forecast(location: str) -> dict[str, str | int]:
                     weather = "雷雨"
 
     return {"whether": weather, "temperature": temperature}
+
+
+wait_event_declaration = {
+    "name": "wait_event",
+    "description": "イベントを待機する",
+    "parameters": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+    },
+}

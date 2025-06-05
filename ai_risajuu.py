@@ -85,12 +85,6 @@ class AI_risajuu:
 
         if input_text.startswith("あ、これはりさじゅう反応しないでね"):
             pass
-        elif input_text.endswith("リセット"):
-            for file in self.client.files.list():
-                self.client.files.delete(name=file.name)
-            self.current_system_instruction = self.config.system_instruction
-            self.chat = self.client.aio.chats.create(model=self.config.main_model_name)
-            yield Reply(type=ReplyType.text, body="履歴をリセットしたじゅう！")
         else:
             text = types.Part.from_text(text=input_text)
             files = []
@@ -128,6 +122,13 @@ class AI_risajuu:
 
             if buffer != "":
                 yield Reply(type=ReplyType.text, body=buffer)
+
+            if input_text.endswith("リセット"):
+                for file in self.client.files.list():
+                    self.client.files.delete(name=file.name)
+                self.current_system_instruction = self.config.system_instruction
+                self.chat = self.client.aio.chats.create(model=self.config.main_model_name)
+                yield Reply(type=ReplyType.text, body="履歴をリセットしたじゅう！")
 
 
 def get_safety_settings():

@@ -11,6 +11,7 @@ from google.genai.types import (
 from pydantic import BaseModel
 
 
+# AIりさじゅうの基本設定
 class RisajuuConfig(BaseModel):
     google_api_key: str
     main_model_name: str
@@ -19,20 +20,25 @@ class RisajuuConfig(BaseModel):
     system_instruction: str
 
 
+# 履歴インポート・エクスポート用の構造体
 class History(BaseModel):
     contents: list[types.Content]
 
 
+# 返答メッセージの種類
 class ReplyType(str, Enum):
     text = "text"
     file = "file"
 
 
+# 返答メッセージの種類と内容
 class Reply(BaseModel):
     type: ReplyType
     body: str
 
 
+# 履歴の保持と回答の生成を担当するクラス
+# Discordのサーバー・DMごとにインスタンス化される
 class AI_risajuu:
     def __init__(self, config):
         self.config = config
@@ -43,17 +49,21 @@ class AI_risajuu:
         self.current_system_instruction = config.system_instruction
 
     def import_history(self, json_str):
+        # 履歴の読み込み
         history = History.model_validate_json(json_str)
         self.chat = self.client.aio.chats.create(model=self.config.main_model_name, history=history.contents)
 
     def export_history(self):
+        # 履歴の書き出し
         history = History(contents=self.chat.get_history())
         return history.model_dump_json(indent=2)
 
     def set_custom_instruction(self, custom_instruction):
+        # プロンプトのカスタム
         self.current_system_instruction = custom_instruction
 
     async def react(self, input_text):
+        # リアクションをサブのモデルで生成
         emoji = await self.client.aio.models.generate_content(
             model=self.config.sub_model_name,
             contents=[
@@ -71,6 +81,8 @@ class AI_risajuu:
         return emoji.text.strip()
 
     async def reply(self, input_text, attachments=[]):
+        # テキストと添付ファイルに対する返答を生成する
+
         if input_text.startswith("あ、これはりさじゅう反応しないでね"):
             pass
         elif input_text.endswith("リセット"):
@@ -99,6 +111,8 @@ class AI_risajuu:
                 safety_settings=get_safety_settings(),
             )
 
+            # 返答をストリーミングで生成する
+            # そのままだと区切りが中途半端なため、改行区切りでyieldする
             buffer = ""
             async for chunk in await self.chat.send_message_stream(message=parts, config=config):
                 if chunk.text:
@@ -117,6 +131,7 @@ class AI_risajuu:
 
 
 def get_safety_settings():
+    # 安全フィルタ設定：ブロックなし
     safety_settings = [
         types.SafetySetting(
             category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,

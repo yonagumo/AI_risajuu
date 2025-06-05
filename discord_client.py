@@ -11,11 +11,13 @@ from pydantic import BaseModel
 from ai_risajuu import AI_risajuu, ReplyType
 
 
+# りさじゅうインスタンス辞書のキーのための現在の場所の種類
 class InstanceType(str, Enum):
     server = "server"
     dm = "dm"
 
 
+# りさじゅうインスタンス辞書のキー
 class InstanceID(BaseModel):
     type: InstanceType
     id: int
@@ -25,11 +27,14 @@ class InstanceID(BaseModel):
 
 
 def split_message_text(text, chunk_size=1500):
+    # 文字列をchunk_size文字ごとのリストにする
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
 
+# Discordのイベントを監視するメインのクラス
 class Risajuu_discord_client(discord.Client):
     def __init__(self, risajuu_config):
+        # メッセージイベントのみ受信する設定
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(intents=intents)
@@ -42,9 +47,13 @@ class Risajuu_discord_client(discord.Client):
             self.targets.append((t[0], t[1]))
 
     async def on_ready(self):
+        # Discordクライアントの準備が完了した
         print(f"We have logged in as {self.user}")
 
     async def on_message(self, message):
+        # メッセージが飛んできたとき呼ばれる関数
+
+        # 送信者がボットなら無視
         if message.author.bot:
             return
 
@@ -55,12 +64,15 @@ class Risajuu_discord_client(discord.Client):
         else:
             risajuu_id = InstanceID(type=InstanceType.server, id=message.guild.id)
 
+        # サーバー・DMごとのりさじゅうインスタンスを指定
         if risajuu_id in self.risajuu_instance:
             risajuu = self.risajuu_instance[risajuu_id]
         else:
+            # メッセージが送られてきた場所にりさじゅうのインスタンスがまだ無いときは作成する
             risajuu = AI_risajuu(self.risajuu_config)
             self.risajuu_instance[risajuu_id] = risajuu
 
+        # リアクション付与と返信は並行して実行
         async with asyncio.TaskGroup() as tasks:
             if is_DM or message.channel.permissions_for(message.channel.guild.default_role).view_channel:
                 tasks.create_task(self.add_reaction(risajuu, message))
@@ -69,6 +81,7 @@ class Risajuu_discord_client(discord.Client):
                 tasks.create_task(self.reply_to_message(risajuu, message))
 
     async def add_reaction(self, risajuu, message):
+        # 指定した確率でリアクションを付ける
         p = float(os.getenv("REACTION_PROBABILITY"))
         if random.random() < p:
             reaction = await risajuu.react(message.content)
@@ -79,6 +92,8 @@ class Risajuu_discord_client(discord.Client):
                     pass
 
     async def reply_to_message(self, risajuu, message):
+        # メッセージに返答する
+
         input_text = message.content
 
         if input_text.startswith("カスタム\n"):
@@ -113,11 +128,14 @@ class Risajuu_discord_client(discord.Client):
             await message.channel.send(text)
             return
 
+        # 生成された回答を順次送信する
         async for reply in risajuu.reply(message.content, message.attachments):
             async with message.channel.typing():
                 body = reply.body
                 match reply.type:
                     case ReplyType.text:
+                        # Discordは一度に2,000文字まで送信できる
+                        # 余裕をもって1,500文字に制限
                         for chunk in split_message_text(body):
                             await message.channel.send(chunk)
                     case ReplyType.file:

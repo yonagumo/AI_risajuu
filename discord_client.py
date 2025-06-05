@@ -19,8 +19,8 @@ class Manager_discord_client(discord.Client):
     async def on_ready(self):
         print(f"We have logged in as {self.user}")
 
-    async def test_message(self, user, channel_id):
-        await self.get_channel(channel_id).send(f"{user.name}によって呼び出されました")
+    async def logging(self, channel_id, message):
+        await self.get_channel(channel_id).send(f"```{message}```")
 
 
 # りさじゅうインスタンス辞書のキーのための現在の場所の種類
@@ -85,6 +85,11 @@ class Risajuu_discord_client(discord.Client):
             risajuu = AI_risajuu(self.risajuu_config)
             self.risajuu_instance[risajuu_id] = risajuu
 
+        if message.content == "thinking":
+            result = risajuu.toggle_thinking()
+            await self.manager.logging(message.channel.id, f"risajuu.include_thoughts: {result}")
+            return
+
         # リアクション付与と返信は並行して実行
         async with asyncio.TaskGroup() as tasks:
             if is_DM or message.channel.permissions_for(message.channel.guild.default_role).view_channel:
@@ -111,7 +116,7 @@ class Risajuu_discord_client(discord.Client):
 
         if input_text.startswith("呼び出し"):
             await message.channel.send(f"お～い！{message.author.display_name}が呼んでるじゅう！")
-            await self.manager.test_message(self.user, message.channel.id)
+            await self.manager.logging(message.channel.id, f"{self.user}によって呼び出されました")
             return
 
         if input_text.startswith("カスタム\n"):
@@ -169,6 +174,11 @@ class Risajuu_discord_client(discord.Client):
                 # 余裕をもって1,500文字に制限
                 for chunk in split_message_text(body):
                     await channel.send(chunk)
+            case ReplyType.thought:
+                for chunk in split_message_text(body):
+                    await channel.send(f"```{chunk}```")
+            case ReplyType.log:
+                await self.manager.logging(channel.id, body)
             case ReplyType.file:
                 await channel.send(file=discord.File(body, filename=os.path.basename(body)))
                 os.remove(body)

@@ -28,6 +28,8 @@ class History(BaseModel):
 # 返答メッセージの種類
 class ReplyType(str, Enum):
     text = "text"
+    log = "log"
+    thought = "thought"
     file = "file"
 
 
@@ -47,6 +49,12 @@ class AI_risajuu:
         self.google_search_tool = Tool(google_search=GoogleSearch())
         self.url_context_tool = Tool(url_context=types.UrlContext())
         self.current_system_instruction = config.system_instruction
+        self.include_thoughts = False
+
+    def toggle_thinking(self):
+        new = not self.include_thoughts
+        self.include_thoughts = new
+        return new
 
     def import_history(self, json_str):
         # 履歴の読み込み
@@ -101,6 +109,7 @@ class AI_risajuu:
             parts.extend(files)
             config = GenerateContentConfig(
                 system_instruction=self.config.common_instruction + self.current_system_instruction,
+                thinking_config=types.ThinkingConfig(include_thoughts=self.include_thoughts),
                 tools=[self.google_search_tool, self.url_context_tool],
                 safety_settings=get_safety_settings(),
             )
@@ -109,16 +118,24 @@ class AI_risajuu:
             # そのままだと区切りが中途半端なため、改行区切りでyieldする
             buffer = ""
             async for chunk in await self.chat.send_message_stream(message=parts, config=config):
-                if chunk.text:
-                    buffer += chunk.text
-                    pop = buffer.rsplit(sep="\n", maxsplit=1)
-                    if len(pop) == 2:
-                        yield Reply(type=ReplyType.text, body=pop[0])
-                        buffer = pop[1]
-                else:
-                    if buffer != "":
-                        yield Reply(type=ReplyType.text, body=buffer)
-                        buffer = ""
+                for part in chunk.candidates[0].content.parts:
+                    if not part.text:
+                        if buffer != "":
+                            yield Reply(type=ReplyType.text, body=buffer)
+                            buffer = ""
+                        continue
+
+                    if part.thought:
+                        if buffer != "":
+                            yield Reply(type=ReplyType.text, body=buffer)
+                            buffer = ""
+                        yield Reply(type=ReplyType.thought, body=part.text)
+                    else:
+                        buffer += part.text
+                        pop = buffer.rsplit(sep="\n", maxsplit=1)
+                        if len(pop) == 2:
+                            yield Reply(type=ReplyType.text, body=pop[0])
+                            buffer = pop[1]
 
             if buffer != "":
                 yield Reply(type=ReplyType.text, body=buffer)

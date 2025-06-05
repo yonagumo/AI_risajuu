@@ -1,5 +1,7 @@
+import asyncio
 import datetime
 import os
+import random
 import tempfile
 
 import discord
@@ -21,15 +23,22 @@ class Risajuu_discord_client(discord.Client):
         if message.author.bot:
             return
 
-        if message.channel.permissions_for(message.channel.guild.default_role).view_channel:
-            try:
-                p = float(os.getenv("REACTION_PROBABILITY"))
-                await message.add_reaction(await self.risajuu.react(message.content, p))
-            except TypeError:
-                pass
+        async with asyncio.TaskGroup() as tasks:
+            if message.channel.permissions_for(message.channel.guild.default_role).view_channel:
+                tasks.create_task(self.add_reaction(message))
 
-        if message.channel.name in os.getenv("TARGET_CHANNEL_NAME").split(",") or self.user.mentioned_in(message):
-            await self.reply_to_message(message)
+            if message.channel.name in os.getenv("TARGET_CHANNEL_NAME").split(",") or self.user.mentioned_in(message):
+                tasks.create_task(self.reply_to_message(message))
+
+    async def add_reaction(self, message):
+        p = float(os.getenv("REACTION_PROBABILITY"))
+        if random.random() < p:
+            reaction = await self.risajuu.react(message.content)
+            if reaction is not None:
+                try:
+                    await message.add_reaction(reaction)
+                except TypeError:
+                    pass
 
     async def reply_to_message(self, message):
         input_text = message.content

@@ -15,14 +15,14 @@ def main():
     with open("common_prompt.md", "r", encoding="utf-8") as f:
         common_prompt = f.read()
 
-    google_api_key = os.environ["GOOGLE_API_KEY"]
+    google_api_key = os.getenv("GOOGLE_API_KEY")
     risajuu = AI_risajuu(google_api_key, common_prompt, system_prompt)
-
-    # Webサーバの立ち上げ
-    keep_alive()
 
     discord_token = os.getenv("DISCORD_TOKEN")
     client = Risajuu_discord_client(risajuu)
+
+    # Webサーバの立ち上げ
+    keep_alive()
 
     client.run(discord_token)
 

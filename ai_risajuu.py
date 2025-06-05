@@ -1,5 +1,4 @@
 import os
-import random
 from enum import Enum
 
 from google import genai
@@ -50,27 +49,22 @@ class AI_risajuu:
         history = History(contents=self.chat.get_history())
         return history.model_dump_json(indent=2)
 
-    async def react(self, input_text, probability):
-        if random.random() < probability:
-            emoji = self.client.models.generate_content(
-                model=self.sub_model_name,
-                contents=[
-                    """
-                        # 指示
-                        「"""
-                    + input_text
-                    + """」というメッセージへのリアクションとして適切な絵文字を一つだけ選んでください。
-                    # 注意
-                    出力には**絵文字一文字のみ**を取ってください。余計なテキストや説明は**絶対に**含めず、**絵文字一文字のみ**を出力してください。
-                    """
-                ],
-                config=GenerateContentConfig(
-                    safety_settings=get_safety_settings(),
-                ),
-            )
-            return emoji.text.strip()
-        else:
-            return None
+    async def react(self, input_text):
+        emoji = await self.client.aio.models.generate_content(
+            model=self.sub_model_name,
+            contents=[
+                """
+                    # 指示
+                    「"""
+                + input_text
+                + """」というメッセージへのリアクションとして適切な絵文字を一つだけ選んでください。
+                # 注意
+                出力には**絵文字一文字のみ**を取ってください。余計なテキストや説明は**絶対に**含めず、**絵文字一文字のみ**を出力してください。
+                """
+            ],
+            config=GenerateContentConfig(safety_settings=get_safety_settings()),
+        )
+        return emoji.text.strip()
 
     async def reply(self, input_text, attachments=[]):
         if input_text.startswith("あ、これはりさじゅう反応しないでね"):
@@ -92,12 +86,11 @@ class AI_risajuu:
                     )
                 )
                 os.remove(attachment.filename)
-                
+
             parts = [text]
             parts.extend(files)
             config = GenerateContentConfig(
                 system_instruction=self.common_instruction + self.current_system_instruction,
-
                 tools=[self.google_search_tool, self.url_context_tool],
                 safety_settings=get_safety_settings(),
             )

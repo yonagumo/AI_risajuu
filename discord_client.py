@@ -9,6 +9,10 @@ import discord
 from ai_risajuu import ReplyType
 
 
+def split_message_text(text, chunk_size=1500):
+    return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+
 class Risajuu_discord_client(discord.Client):
     def __init__(self, risajuu):
         intents = discord.Intents.default()
@@ -80,7 +84,8 @@ class Risajuu_discord_client(discord.Client):
                 body = reply.body
                 match reply.type:
                     case ReplyType.text:
-                        await message.channel.send(body)
+                        for chunk in split_message_text(body):
+                            await message.channel.send(chunk)
                     case ReplyType.file:
                         await message.channel.send(file=discord.File(body, filename=os.path.basename(body)))
                         os.remove(body)

@@ -11,6 +11,14 @@ from google.genai.types import (
 from pydantic import BaseModel
 
 
+class RisajuuConfig(BaseModel):
+    google_api_key: str
+    main_model_name: str
+    sub_model_name: str
+    common_instruction: str
+    system_instruction: str
+
+
 class History(BaseModel):
     contents: list[types.Content]
 
@@ -26,28 +34,28 @@ class Reply(BaseModel):
 
 
 class AI_risajuu:
-    def __init__(self, api_key, common_instruction, system_instruction):
-        self.main_model_name = os.getenv("MAIN_MODEL_NAME")
-        self.sub_model_name = os.getenv("SUB_MODEL_NAME")
-        self.client = genai.Client(api_key=api_key)
-        self.chat = self.client.aio.chats.create(model=self.main_model_name)
+    def __init__(self, config):
+        self.config = config
+        self.client = genai.Client(api_key=config.google_api_key)
+        self.chat = self.client.aio.chats.create(model=config.main_model_name)
         self.google_search_tool = Tool(google_search=GoogleSearch())
         self.url_context_tool = Tool(url_context=types.UrlContext())
-        self.common_instruction = common_instruction
-        self.system_instruction = system_instruction
-        self.current_system_instruction = system_instruction
+        self.current_system_instruction = config.system_instruction
 
     def import_history(self, json_str):
         history = History.model_validate_json(json_str)
-        self.chat = self.client.aio.chats.create(model=self.main_model_name, history=history.contents)
+        self.chat = self.client.aio.chats.create(model=self.config.main_model_name, history=history.contents)
 
     def export_history(self):
         history = History(contents=self.chat.get_history())
         return history.model_dump_json(indent=2)
 
+    def set_custom_instruction(self, custom_instruction):
+        self.current_system_instruction = custom_instruction
+
     async def react(self, input_text):
         emoji = await self.client.aio.models.generate_content(
-            model=self.sub_model_name,
+            model=self.config.sub_model_name,
             contents=[
                 """
                     # 指示
@@ -68,8 +76,8 @@ class AI_risajuu:
         elif input_text.endswith("リセット"):
             for file in self.client.files.list():
                 self.client.files.delete(name=file.name)
-            self.current_system_instruction = self.system_instruction
-            self.chat = self.client.aio.chats.create(model=self.main_model_name)
+            self.current_system_instruction = self.config.system_instruction
+            self.chat = self.client.aio.chats.create(model=self.config.main_model_name)
             yield Reply(type=ReplyType.text, body="履歴をリセットしたじゅう！")
         else:
             text = types.Part.from_text(text=input_text)
@@ -86,7 +94,7 @@ class AI_risajuu:
             parts = [text]
             parts.extend(files)
             config = GenerateContentConfig(
-                system_instruction=self.common_instruction + self.current_system_instruction,
+                system_instruction=self.config.common_instruction + self.current_system_instruction,
                 tools=[self.google_search_tool, self.url_context_tool],
                 safety_settings=get_safety_settings(),
             )

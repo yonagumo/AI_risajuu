@@ -36,6 +36,7 @@ def main():
     # Discordクライアントの起動
     discord_token = os.getenv("DISCORD_TOKEN")
     client.run(discord_token)
+    print("\n=== exit ===")
 
 
 if __name__ == "__main__":

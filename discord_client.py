@@ -115,6 +115,8 @@ class Risajuu_discord_client(discord.Client):
             return
 
         if input_text.endswith("エクスポート"):
+            text = "履歴をエクスポートするじゅう！"
+            await message.channel.send(text)
             json_str = risajuu.export_history()
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             prefix = f"risajuu_history_{timestamp}_"
@@ -124,20 +126,31 @@ class Risajuu_discord_client(discord.Client):
                 file.write(json_str)
                 file.flush()
                 await message.channel.send(file=discord.File(file.name, filename=os.path.basename(file.name)))
-            text = "履歴をエクスポートするじゅう！"
-            await message.channel.send(text)
             return
 
         # 生成された回答を順次送信する
-        async for reply in risajuu.reply(message.content, message.attachments):
-            async with message.channel.typing():
-                body = reply.body
-                match reply.type:
-                    case ReplyType.text:
-                        # Discordは一度に2,000文字まで送信できる
-                        # 余裕をもって1,500文字に制限
-                        for chunk in split_message_text(body):
-                            await message.channel.send(chunk)
-                    case ReplyType.file:
-                        await message.channel.send(file=discord.File(body, filename=os.path.basename(body)))
-                        os.remove(body)
+        # 入力中表示のために１回分先に生成する
+        gen = risajuu.reply(message.content, message.attachments)
+        try:
+            buffer = await gen.__anext__()
+        except StopAsyncIteration:
+            pass
+        else:
+            await message.channel.typing()
+            async for reply in gen:
+                await self.send_message(message.channel, buffer)
+                await message.channel.typing()
+                buffer = reply
+            await self.send_message(message.channel, buffer)
+
+    async def send_message(self, channel, reply):
+        body = reply.body
+        match reply.type:
+            case ReplyType.text:
+                # Discordは一度に2,000文字まで送信できる
+                # 余裕をもって1,500文字に制限
+                for chunk in split_message_text(body):
+                    await channel.send(chunk)
+            case ReplyType.file:
+                await channel.send(file=discord.File(body, filename=os.path.basename(body)))
+                os.remove(body)

@@ -3,6 +3,7 @@ import datetime
 import os
 import random
 import tempfile
+import traceback
 from enum import Enum
 
 import discord
@@ -20,7 +21,9 @@ class Manager_discord_client(discord.Client):
         print(f"We have logged in as {self.user}")
 
     async def logging(self, channel_id, message):
-        await self.get_channel(channel_id).send(f"```{message}```")
+        channel = self.get_channel(channel_id)
+        if channel:
+            await channel.send(f"```{message}```")
 
 
 # りさじゅうインスタンス辞書のキーのための現在の場所の種類
@@ -91,12 +94,19 @@ class Risajuu_discord_client(discord.Client):
             return
 
         # リアクション付与と返信は並行して実行
-        async with asyncio.TaskGroup() as tasks:
-            if is_DM or message.channel.permissions_for(message.channel.guild.default_role).view_channel:
-                tasks.create_task(self.add_reaction(risajuu, message))
+        try:
+            async with asyncio.TaskGroup() as tasks:
+                if is_DM or message.channel.permissions_for(message.channel.guild.default_role).view_channel:
+                    tasks.create_task(self.add_reaction(risajuu, message))
 
-            if is_DM or (message.guild.name, message.channel.name) in self.targets or self.user.mentioned_in(message):
-                tasks.create_task(self.reply_to_message(risajuu, message))
+                if (
+                    is_DM
+                    or (message.guild.name, message.channel.name) in self.targets
+                    or self.user.mentioned_in(message)
+                ):
+                    tasks.create_task(self.reply_to_message(risajuu, message))
+        except* Exception:
+            traceback.print_exc()
 
     async def add_reaction(self, risajuu, message):
         # 指定した確率でリアクションを付ける
@@ -178,7 +188,8 @@ class Risajuu_discord_client(discord.Client):
                 for chunk in split_message_text(body):
                     await channel.send(f"```{chunk}```")
             case ReplyType.log:
-                await self.manager.logging(channel.id, body)
+                # await self.manager.logging(channel.id, body)
+                await channel.send(f"```{body}```")
             case ReplyType.file:
                 await channel.send(file=discord.File(body, filename=os.path.basename(body)))
                 os.remove(body)

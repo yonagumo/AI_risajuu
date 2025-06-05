@@ -10,6 +10,8 @@ from google.genai.types import (
 )
 from pydantic import BaseModel
 
+from functions import declarations, functions
+
 
 # AIりさじゅうの基本設定
 class RisajuuConfig(BaseModel):
@@ -48,6 +50,9 @@ class AI_risajuu:
         self.chat = self.client.aio.chats.create(model=config.main_model_name)
         self.google_search_tool = Tool(google_search=GoogleSearch())
         self.url_context_tool = Tool(url_context=types.UrlContext())
+        self.my_tools = Tool(function_declarations=declarations())
+        # self.tools = [self.google_search_tool, self.url_context_tool]
+        self.tools = [self.my_tools]
         self.current_system_instruction = config.system_instruction
         self.include_thoughts = False
 
@@ -88,13 +93,17 @@ class AI_risajuu:
         )
         return emoji.text.strip()
 
-    async def reply(self, input_text, attachments=[]):
+    async def reply(
+        self,
+        input_text=None,
+        attachments=[],
+        function_response=[],
+    ):
         # テキストと添付ファイルに対する返答を生成する
-
-        if input_text.startswith("あ、これはりさじゅう反応しないでね"):
+        if input_text and input_text.startswith("あ、これはりさじゅう反応しないでね"):
             pass
         else:
-            text = types.Part.from_text(text=input_text)
+            text_parts = [types.Part.from_text(text=input_text)] if input_text else []
             files = []
             for attachment in attachments:
                 await attachment.save(attachment.filename)
@@ -104,33 +113,45 @@ class AI_risajuu:
                     )
                 )
                 os.remove(attachment.filename)
-
-            parts = [text]
+            parts = text_parts
             parts.extend(files)
+            parts.extend(function_response)
             config = GenerateContentConfig(
                 system_instruction=self.config.common_instruction + self.current_system_instruction,
                 thinking_config=types.ThinkingConfig(include_thoughts=self.include_thoughts),
-                tools=[self.google_search_tool, self.url_context_tool],
+                tools=self.tools,
                 safety_settings=get_safety_settings(),
             )
-
             # 返答をストリーミングで生成する
             # そのままだと区切りが中途半端なため、改行区切りでyieldする
             buffer = ""
+            function_calls = []
+            print("start")
             async for chunk in await self.chat.send_message_stream(message=parts, config=config):
-                for part in chunk.candidates[0].content.parts:
+                print("chunk")
+                for part in chunk.candidates[0].content.parts or []:
+                    print("part")
                     if not part.text:
                         if buffer != "":
                             yield Reply(type=ReplyType.text, body=buffer)
                             buffer = ""
+
+                        if part.function_call:
+                            print("function_call")
+                            function_calls.append(part.function_call)
+                        else:
+                            print("*unreachable* not function_call")
+
                         continue
 
                     if part.thought:
+                        print("thought")
                         if buffer != "":
                             yield Reply(type=ReplyType.text, body=buffer)
                             buffer = ""
                         yield Reply(type=ReplyType.thought, body=part.text)
                     else:
+                        print("text")
                         buffer += part.text
                         pop = buffer.rsplit(sep="\n", maxsplit=1)
                         if len(pop) == 2:
@@ -140,12 +161,32 @@ class AI_risajuu:
             if buffer != "":
                 yield Reply(type=ReplyType.text, body=buffer)
 
-            if input_text.endswith("リセット"):
+            if function_calls:
+                results = []
+                for function_call in function_calls:
+                    try:
+                        response = {"output": functions()[function_call.name](**function_call.args)}
+                    except Exception as e:
+                        response = {"error": repr(e)}
+                    part = types.Part.from_function_response(name=function_call.name, response=response)
+                    results.append(part)
+                    log = function_call.name + "\n"
+                    log += str(function_call.args) + "\n"
+                    log += str(response)
+                    yield Reply(type=ReplyType.log, body=log)
+                print("recurse")
+                async for reply in self.reply(function_response=results):
+                    yield reply
+                print("recurse end")
+
+            print("reset check")
+            if input_text and input_text.endswith("リセット"):
                 for file in self.client.files.list():
                     self.client.files.delete(name=file.name)
                 self.current_system_instruction = self.config.system_instruction
                 self.chat = self.client.aio.chats.create(model=self.config.main_model_name)
                 yield Reply(type=ReplyType.text, body="履歴をリセットしたじゅう！")
+            print("end")
 
 
 def get_safety_settings():

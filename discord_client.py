@@ -92,6 +92,10 @@ class Risajuu_discord_client(discord.Client):
             result = risajuu.toggle_thinking()
             await self.manager.logging(message.channel.id, f"risajuu.include_thoughts: {result}")
             return
+        elif message.content == "logging":
+            result = risajuu.toggle_logging()
+            await self.manager.logging(message.channel.id, f"risajuu.logging: {result}")
+            return
 
         # リアクション付与と返信は並行して実行
         try:
@@ -188,8 +192,8 @@ class Risajuu_discord_client(discord.Client):
                 for chunk in split_message_text(body):
                     await channel.send(f"```{chunk}```")
             case ReplyType.log:
-                # await self.manager.logging(channel.id, body)
-                await channel.send(f"```{body}```")
+                await self.manager.logging(channel.id, body)
+                # await channel.send(f"```{body}```")
             case ReplyType.file:
                 await channel.send(file=discord.File(body, filename=os.path.basename(body)))
                 os.remove(body)

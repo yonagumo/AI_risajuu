@@ -55,11 +55,21 @@ class AI_risajuu:
         self.tools = [self.my_tools]
         self.current_system_instruction = config.system_instruction
         self.include_thoughts = False
+        self.logging = False
 
     def toggle_thinking(self):
         new = not self.include_thoughts
         self.include_thoughts = new
         return new
+
+    def toggle_logging(self):
+        new = not self.logging
+        self.logging = new
+        return new
+
+    def log(self, text):
+        if self.logging:
+            print(text)
 
     def import_history(self, json_str):
         # 履歴の読み込み
@@ -126,32 +136,32 @@ class AI_risajuu:
             # そのままだと区切りが中途半端なため、改行区切りでyieldする
             buffer = ""
             function_calls = []
-            print("start")
+            self.log("start")
             async for chunk in await self.chat.send_message_stream(message=parts, config=config):
-                print("chunk")
+                self.log("chunk")
                 for part in chunk.candidates[0].content.parts or []:
-                    print("part")
+                    self.log("part")
                     if not part.text:
                         if buffer != "":
                             yield Reply(type=ReplyType.text, body=buffer)
                             buffer = ""
 
                         if part.function_call:
-                            print("function_call")
+                            self.log("function_call")
                             function_calls.append(part.function_call)
                         else:
-                            print("*unreachable* not function_call")
+                            self.log("*unreachable* not function_call")
 
                         continue
 
                     if part.thought:
-                        print("thought")
+                        self.log("thought")
                         if buffer != "":
                             yield Reply(type=ReplyType.text, body=buffer)
                             buffer = ""
                         yield Reply(type=ReplyType.thought, body=part.text)
                     else:
-                        print("text")
+                        self.log("text")
                         buffer += part.text
                         pop = buffer.rsplit(sep="\n", maxsplit=1)
                         if len(pop) == 2:
@@ -174,19 +184,19 @@ class AI_risajuu:
                     log += str(function_call.args) + "\n"
                     log += str(response)
                     yield Reply(type=ReplyType.log, body=log)
-                print("recurse")
+                self.log("recurse")
                 async for reply in self.reply(function_response=results):
                     yield reply
-                print("recurse end")
+                self.log("recurse end")
 
-            print("reset check")
+            self.log("reset check")
             if input_text and input_text.endswith("リセット"):
                 for file in self.client.files.list():
                     self.client.files.delete(name=file.name)
                 self.current_system_instruction = self.config.system_instruction
                 self.chat = self.client.aio.chats.create(model=self.config.main_model_name)
                 yield Reply(type=ReplyType.text, body="履歴をリセットしたじゅう！")
-            print("end")
+            self.log("end")
 
 
 def get_safety_settings():

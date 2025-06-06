@@ -132,11 +132,13 @@ class AI_risajuu:
             parts.extend(function_response)
             if parts == []:
                 parts = types.Part.from_text(text="")
+
             config = GenerateContentConfig(
                 system_instruction=self.config.common_instruction + self.current_system_instruction,
                 thinking_config=types.ThinkingConfig(include_thoughts=self.include_thoughts),
-                tools=self.tools,
                 safety_settings=get_safety_settings(),
+                tools=self.tools,
+                tool_config=types.ToolConfig(function_calling_config=types.FunctionCallingConfig(mode="ANY")),
             )
             # 返答をストリーミングで生成する
             # そのままだと区切りが中途半端なため、改行区切りでyieldする
@@ -183,10 +185,15 @@ class AI_risajuu:
                     if function_call.name == "wait_event":
                         yield Reply(type=ReplyType.log, body="wait_event")
                         return
-                    try:
-                        response = {"output": functions()[function_call.name](**function_call.args)}
-                    except Exception as e:
-                        response = {"error": repr(e)}
+                    if function_call.name == "send_message":
+                        yield Reply(type=ReplyType.text, body=function_call.args["body"])
+                        result = {"status": "OK"}
+                        response = {"output": result}
+                    else:
+                        try:
+                            response = {"output": functions()[function_call.name](**function_call.args)}
+                        except Exception as e:
+                            response = {"error": repr(e)}
                     part = types.Part.from_function_response(name=function_call.name, response=response)
                     results.append(part)
                     log = function_call.name + "\n"

@@ -2,11 +2,11 @@ import random
 
 
 def declarations():
-    return [wait_event_declaration, get_weather_forecast_declaration]
+    return [send_message_declaration, wait_event_declaration, get_weather_forecast_declaration]
 
 
 def functions():
-    return {"get_weather_forecast": get_weather_forecast, "wait_event": wait_event}
+    return {"send_message": send_message, "get_weather_forecast": get_weather_forecast, "wait_event": wait_event}
 
 
 wait_event_declaration = {
@@ -16,6 +16,21 @@ wait_event_declaration = {
 
 
 def wait_event() -> dict[str, str]:
+    raise Exception
+
+
+send_message_declaration = {
+    "name": "send_message",
+    "description": "Discordを使用してメッセージを送る。戻り値は送信ステータス",
+    "parameters": {
+        "type": "object",
+        "properties": {"body": {"type": "string", "description": "送信するメッセージの本文"}},
+        "required": ["body"],
+    },
+}
+
+
+def send_message(body) -> dict[str, str]:
     raise Exception
 
 

@@ -184,12 +184,9 @@ class Risajuu_discord_client(discord.Client):
             return
 
         parts = []
-        if input_text == "tweet":
+        if input_text == "solo":
             input_text = None
-            function_name = "wait_event"
-            result = {"type": "constant", "todo": "tweet"}
-            response = types.Part.from_function_response(name=function_name, response={"output": result})
-            parts = [response]
+            parts = [types.Part.from_text(text="")]
         elif input_text == "notify":
             input_text = None
             function_name = "wait_event"

@@ -1,8 +1,12 @@
 import random
 
 
+def declarations_without_wait_event():
+    return [get_weather_forecast_declaration]
+
+
 def declarations():
-    return [wait_event_declaration, get_weather_forecast_declaration]
+    return declarations_without_wait_event().append(wait_event_declaration)
 
 
 def functions():

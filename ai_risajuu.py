@@ -10,7 +10,7 @@ from google.genai.types import (
 )
 from pydantic import BaseModel
 
-from functions import declarations, functions
+from functions import declarations, declarations_without_wait_event, functions
 
 
 # AIりさじゅうの基本設定
@@ -53,6 +53,8 @@ class AI_risajuu:
         self.my_tools = Tool(function_declarations=declarations())
         # self.tools = [self.google_search_tool, self.url_context_tool]
         self.tools = [self.my_tools]
+        self.my_tools_no_wait = Tool(function_declarations=declarations_without_wait_event())
+        self.tools_no_wait = [self.my_tools_no_wait]
         self.current_system_instruction = config.system_instruction
         self.include_thoughts = False
         self.logging = False
@@ -130,12 +132,14 @@ class AI_risajuu:
             parts = text_parts
             parts.extend(files)
             parts.extend(function_response)
+            solo = False
             if parts == []:
+                solo = True
                 parts = types.Part.from_text(text="")
             config = GenerateContentConfig(
                 system_instruction=self.config.common_instruction + self.current_system_instruction,
                 thinking_config=types.ThinkingConfig(include_thoughts=self.include_thoughts),
-                tools=self.tools,
+                tools=self.tools if not solo else self.tools_no_wait,
                 safety_settings=get_safety_settings(),
             )
             # 返答をストリーミングで生成する

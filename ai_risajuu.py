@@ -57,6 +57,10 @@ class AI_risajuu:
         self.include_thoughts = False
         self.logging = False
 
+    def log(self, text):
+        if self.logging:
+            print(text)
+
     def toggle_thinking(self):
         new = not self.include_thoughts
         self.include_thoughts = new
@@ -67,9 +71,9 @@ class AI_risajuu:
         self.logging = new
         return new
 
-    def log(self, text):
-        if self.logging:
-            print(text)
+    def add_history(self, content):
+        self.chat._comprehensive_history.append(content)
+        self.chat._curated_history.append(content)
 
     def import_history(self, json_str):
         # 履歴の読み込み
@@ -126,6 +130,8 @@ class AI_risajuu:
             parts = text_parts
             parts.extend(files)
             parts.extend(function_response)
+            if parts == []:
+                parts = types.Part.from_text(text="")
             config = GenerateContentConfig(
                 system_instruction=self.config.common_instruction + self.current_system_instruction,
                 thinking_config=types.ThinkingConfig(include_thoughts=self.include_thoughts),
@@ -174,6 +180,9 @@ class AI_risajuu:
             if function_calls:
                 results = []
                 for function_call in function_calls:
+                    if function_call.name == "wait_event":
+                        yield Reply(type=ReplyType.log, body="wait_event")
+                        return
                     try:
                         response = {"output": functions()[function_call.name](**function_call.args)}
                     except Exception as e:

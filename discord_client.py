@@ -7,6 +7,7 @@ import traceback
 from enum import Enum
 
 import discord
+from google.genai import types
 from pydantic import BaseModel
 
 from ai_risajuu import AI_risajuu, ReplyType
@@ -19,6 +20,11 @@ class Manager_discord_client(discord.Client):
 
     async def on_ready(self):
         print(f"We have logged in as {self.user}")
+
+    async def typing(self, channel_id):
+        channel = self.get_channel(channel_id)
+        if channel:
+            await channel.typing()
 
     async def logging(self, channel_id, message):
         channel = self.get_channel(channel_id)
@@ -97,6 +103,18 @@ class Risajuu_discord_client(discord.Client):
             await self.manager.logging(message.channel.id, f"risajuu.logging: {result}")
             return
 
+        if message.content == "init":
+            # content = types.UserContent([])
+            # content = types.Content(parts=[], role="user")
+            content = types.UserContent(types.Part.from_text(text=""))
+            risajuu.add_history(content)
+            return
+        elif message.content == "wait_event":
+            function_call = types.Part.from_function_call(name="wait_event", args={})
+            content = types.ModelContent(function_call)
+            risajuu.add_history(content)
+            return
+
         # リアクション付与と返信は並行して実行
         try:
             async with asyncio.TaskGroup() as tasks:
@@ -165,19 +183,59 @@ class Risajuu_discord_client(discord.Client):
                 await message.channel.send(file=discord.File(file.name, filename=os.path.basename(file.name)))
             return
 
+        parts = []
+        if input_text == "tweet":
+            input_text = None
+            function_name = "wait_event"
+            result = {"type": "constant", "todo": "tweet"}
+            response = types.Part.from_function_response(name=function_name, response={"output": result})
+            parts = [response]
+        elif input_text == "notify":
+            input_text = None
+            function_name = "wait_event"
+            timestamp = datetime.datetime.now().strftime("%Y/%m/%d_%H:%M:%S")
+            result = {"type": "alarm", "timestamp": timestamp}
+            response = types.Part.from_function_response(name=function_name, response={"output": result})
+            parts = [response]
+        elif input_text.startswith("metadata\n"):
+            input_text = input_text.replace("metadata\n", "")
+            function_name = "wait_event"
+            timestamp = datetime.datetime.now().strftime("%Y/%m/%d_%H:%M:%S")
+            result = {
+                "type": "message",
+                "timestamp": timestamp,
+                "author_name": message.author.display_name,
+                "content": input_text,
+            }
+            response = types.Part.from_function_response(name=function_name, response={"output": result})
+            parts = [response]
+            input_text = None
+
         # 生成された回答を順次送信する
         # 入力中表示のために１回分先に生成する
-        gen = risajuu.reply(message.content, message.attachments)
+        gen = risajuu.reply(input_text, message.attachments, parts)
         try:
             buffer = await gen.__anext__()
         except StopAsyncIteration:
             pass
         else:
-            await message.channel.typing()
+            # 次に送信するメッセージがLogならAI managerのほうを入力中にする
+            if buffer.type == ReplyType.log:
+                await self.manager.typing(message.channel.id)
+            else:
+                await message.channel.typing()
+
             async for reply in gen:
                 await self.send_message(message.channel, buffer)
-                await message.channel.typing()
                 buffer = reply
+
+                # 次に送信するメッセージがLogならAI managerのほうを入力中にする
+                if buffer.type == ReplyType.log:
+                    await self.manager.typing(message.channel.id)
+                else:
+                    await message.channel.typing()
+
+            # 最後に残ったバッファ内容を送信
             await self.send_message(message.channel, buffer)
 
     async def send_message(self, channel, reply):

@@ -2,11 +2,21 @@ import random
 
 
 def declarations():
-    return [get_weather_forecast_declaration]
+    return [wait_event_declaration, get_weather_forecast_declaration]
 
 
 def functions():
-    return {"get_weather_forecast": get_weather_forecast}
+    return {"get_weather_forecast": get_weather_forecast, "wait_event": wait_event}
+
+
+wait_event_declaration = {
+    "name": "wait_event",
+    "description": "ユーザーからのメッセージなどのイベント発生を待機する。戻り値はイベントの種類と内容",
+}
+
+
+def wait_event() -> dict[str, str]:
+    raise Exception
 
 
 get_weather_forecast_declaration = {

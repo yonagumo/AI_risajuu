@@ -94,6 +94,15 @@ class Risajuu_discord_client(discord.Client):
             risajuu = AI_risajuu(self.risajuu_config)
             self.risajuu_instance[risajuu_id] = risajuu
 
+        # if message.content == "file_list":
+        #     text = ""
+        #     for file in risajuu.client.files.list():
+        #         meta = risajuu.client.files.get(name=file.name)
+        #         text += f"・{file.name}: {meta}\n"
+        #     for t in split_message_text(text, chunk_size=2000):
+        #         await message.channel.send(t)
+        #     return
+
         if message.content == "thinking":
             result = risajuu.toggle_thinking()
             await self.manager.logging(message.channel.id, f"risajuu.include_thoughts: {result}")

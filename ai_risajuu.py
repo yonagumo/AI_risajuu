@@ -56,6 +56,7 @@ class AI_risajuu:
         self.my_tools_no_wait = Tool(function_declarations=declarations_without_wait_event())
         self.tools_no_wait = [self.my_tools_no_wait]
         self.current_system_instruction = config.system_instruction
+        self.files = []
         self.include_thoughts = False
         self.logging = False
 
@@ -77,10 +78,16 @@ class AI_risajuu:
         self.chat._comprehensive_history.append(content)
         self.chat._curated_history.append(content)
 
+    def reset_files(self):
+        for file in self.files:
+            self.client.files.delete(name=file.name)
+        self.files = []
+
     def import_history(self, json_str):
         # 履歴の読み込み
         history = History.model_validate_json(json_str)
         self.chat = self.client.aio.chats.create(model=self.config.main_model_name, history=history.contents)
+        self.reset_files()
 
     def export_history(self):
         # 履歴の書き出し
@@ -136,6 +143,9 @@ class AI_risajuu:
             if parts == []:
                 solo = True
                 parts = types.Part.from_text(text="")
+
+            self.files.extend(files)
+
             config = GenerateContentConfig(
                 system_instruction=self.config.common_instruction + self.current_system_instruction,
                 thinking_config=types.ThinkingConfig(include_thoughts=self.include_thoughts),
@@ -204,10 +214,9 @@ class AI_risajuu:
 
             self.log("reset check")
             if input_text and input_text.endswith("リセット"):
-                for file in self.client.files.list():
-                    self.client.files.delete(name=file.name)
                 self.current_system_instruction = self.config.system_instruction
                 self.chat = self.client.aio.chats.create(model=self.config.main_model_name)
+                self.reset_files()
                 yield Reply(type=ReplyType.text, body="履歴をリセットしたじゅう！")
             self.log("end")
 

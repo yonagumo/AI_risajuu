@@ -103,11 +103,11 @@ class Risajuu_discord_client(discord.Client):
         #         await message.channel.send(t)
         #     return
 
-        is_target = (
+        is_target_message = (
             is_DM or (message.guild.name, message.channel.name) in self.targets or self.user.mentioned_in(message)
         )
 
-        if is_target:
+        if is_target_message:
             if message.content == "thinking":
                 result = risajuu.toggle_thinking()
                 await self.manager.logging(message.channel.id, f"risajuu.include_thoughts: {result}")
@@ -135,7 +135,7 @@ class Risajuu_discord_client(discord.Client):
                 if is_DM or message.channel.permissions_for(message.channel.guild.default_role).view_channel:
                     tasks.create_task(self.add_reaction(risajuu, message))
 
-                if is_target:
+                if is_target_message:
                     tasks.create_task(self.reply_to_message(risajuu, message))
         except* Exception:
             traceback.print_exc()

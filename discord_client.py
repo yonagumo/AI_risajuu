@@ -285,7 +285,8 @@ class Risajuu_discord_client(discord.Client):
                 for chunk in split_message_text(body):
                     await channel.send(f"```{chunk}```")
             case ReplyType.log:
-                await self.manager.logging(channel.id, body)
+                for chunk in split_message_text(body):
+                    await self.manager.logging(channel.id, chunk)
                 # await channel.send(f"```{body}```")
             case ReplyType.file:
                 await channel.send(file=discord.File(body, filename=os.path.basename(body)))

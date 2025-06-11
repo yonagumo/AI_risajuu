@@ -59,6 +59,7 @@ class AI_risajuu:
         self.files = []
         self.include_thoughts = False
         self.logging = False
+        self.memo = ""
 
     def log(self, text):
         if self.logging:
@@ -87,6 +88,7 @@ class AI_risajuu:
         # 履歴の読み込み
         history = History.model_validate_json(json_str)
         self.chat = self.client.aio.chats.create(model=self.config.main_model_name, history=history.contents)
+        self.memo = ""
         self.reset_files()
 
     def export_history(self):
@@ -97,6 +99,7 @@ class AI_risajuu:
     def set_custom_instruction(self, custom_instruction):
         # プロンプトのカスタム
         self.current_system_instruction = custom_instruction
+        self.memo = ""
 
     async def react(self, input_text):
         # リアクションをサブのモデルで生成
@@ -147,10 +150,11 @@ class AI_risajuu:
             self.files.extend(files)
 
             config = GenerateContentConfig(
-                system_instruction=self.config.common_instruction + self.current_system_instruction,
+                system_instruction=f"{self.config.common_instruction}\n{self.current_system_instruction}\n{self.memo}",
                 thinking_config=types.ThinkingConfig(include_thoughts=self.include_thoughts),
                 tools=self.tools if not solo else self.tools_no_wait,
                 safety_settings=get_safety_settings(),
+                # tool_config=types.ToolConfig(function_calling_config=types.FunctionCallingConfig(mode="ANY")),
             )
             # 返答をストリーミングで生成する
             # そのままだと区切りが中途半端なため、改行区切りでyieldする
@@ -194,15 +198,35 @@ class AI_risajuu:
             if function_calls:
                 results = []
                 for function_call in function_calls:
-                    if function_call.name == "add_event_listener":
-                        yield Reply(type=ReplyType.log, body="add_event_listener")
-                        continue
-                    try:
-                        response = {"output": functions()[function_call.name](**function_call.args)}
-                    except Exception as e:
-                        response = {"error": repr(e)}
+                    # if function_call.name == "add_event_listener":
+                    # Reply(type=ReplyType.log, body="add_event_listener")
+                    # continue
+                    if function_call.name == "memorize":
+                        body = function_call.args["body"]
+                        if self.memo and body:
+                            self.memo += "\n"
+                        self.memo += body
+                        response = {"output": self.memo}
+                    else:
+                        try:
+                            if function_call.name == "oracle":
+                                prompt = function_call.args["question"]
+                                response = {
+                                    "output": functions()["oracle"](self.client, self.config.main_model_name, prompt)
+                                }
+                            else:
+                                response = {"output": functions()[function_call.name](**function_call.args)}
+                        except Exception as e:
+                            response = {"error": repr(e)}
+
                     part = types.Part.from_function_response(name=function_call.name, response=response)
-                    results.append(part)
+
+                    silent = function_call.name in ["add_event_listener", "memorize", "request_new_feature"]
+                    if silent:
+                        self.add_history(types.ModelContent(part))
+                    else:
+                        results.append(part)
+
                     log = function_call.name + "\n"
                     log += str(function_call.args) + "\n"
                     log += str(response)
@@ -219,6 +243,7 @@ class AI_risajuu:
                 self.current_system_instruction = self.config.system_instruction
                 self.chat = self.client.aio.chats.create(model=self.config.main_model_name)
                 self.reset_files()
+                self.memo = ""
                 yield Reply(type=ReplyType.text, body="履歴をリセットしたじゅう！")
             self.log("end")
 

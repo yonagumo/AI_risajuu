@@ -103,26 +103,31 @@ class Risajuu_discord_client(discord.Client):
         #         await message.channel.send(t)
         #     return
 
-        if message.content == "thinking":
-            result = risajuu.toggle_thinking()
-            await self.manager.logging(message.channel.id, f"risajuu.include_thoughts: {result}")
-            return
-        elif message.content == "logging":
-            result = risajuu.toggle_logging()
-            await self.manager.logging(message.channel.id, f"risajuu.logging: {result}")
-            return
+        is_target = (
+            is_DM or (message.guild.name, message.channel.name) in self.targets or self.user.mentioned_in(message)
+        )
 
-        if message.content == "init":
-            # content = types.UserContent([])
-            # content = types.Content(parts=[], role="user")
-            content = types.UserContent(types.Part.from_text(text=""))
-            risajuu.add_history(content)
-            return
-        elif message.content == "wait_event":
-            function_call = types.Part.from_function_call(name="wait_event", args={})
-            content = types.ModelContent(function_call)
-            risajuu.add_history(content)
-            return
+        if is_target:
+            if message.content == "thinking":
+                result = risajuu.toggle_thinking()
+                await self.manager.logging(message.channel.id, f"risajuu.include_thoughts: {result}")
+                return
+            elif message.content == "logging":
+                result = risajuu.toggle_logging()
+                await self.manager.logging(message.channel.id, f"risajuu.logging: {result}")
+                return
+
+            if message.content == "init":
+                # content = types.UserContent([])
+                # content = types.Content(parts=[], role="user")
+                content = types.UserContent(types.Part.from_text(text=""))
+                risajuu.add_history(content)
+                return
+            elif message.content == "add_event_listener":
+                function_call = types.Part.from_function_call(name="add_event_listener", args={})
+                content = types.ModelContent(function_call)
+                risajuu.add_history(content)
+                return
 
         # リアクション付与と返信は並行して実行
         try:
@@ -130,11 +135,7 @@ class Risajuu_discord_client(discord.Client):
                 if is_DM or message.channel.permissions_for(message.channel.guild.default_role).view_channel:
                     tasks.create_task(self.add_reaction(risajuu, message))
 
-                if (
-                    is_DM
-                    or (message.guild.name, message.channel.name) in self.targets
-                    or self.user.mentioned_in(message)
-                ):
+                if is_target:
                     tasks.create_task(self.reply_to_message(risajuu, message))
         except* Exception:
             traceback.print_exc()
@@ -196,26 +197,54 @@ class Risajuu_discord_client(discord.Client):
         if input_text == "solo":
             input_text = None
             parts = [types.Part.from_text(text="")]
-        elif input_text == "notify":
+        elif input_text == "registered":
             input_text = None
-            function_name = "wait_event"
+            function_name = "add_event_listener"
+            result = {"type": "log", "status": "registered"}
+            response = types.FunctionResponse(
+                name=function_name, response={"output": result}, scheduling="SILENT", will_continue=True
+            )
+            parts = [types.Part(function_response=response)]
+        elif input_text.startswith("notify\n"):
+            input_text = input_text.replace("notify\n", "")
+            function_name = "add_event_listener"
             timestamp = datetime.datetime.now().strftime("%Y/%m/%d_%H:%M:%S")
-            result = {"type": "alarm", "timestamp": timestamp}
-            response = types.Part.from_function_response(name=function_name, response={"output": result})
-            parts = [response]
+            if input_text:
+                result = {"type": "alarm", "timestamp": timestamp, "content": input_text}
+            else:
+                result = {"type": "alarm", "timestamp": timestamp}
+            # response = types.Part.from_function_response(name=function_name, response={"output": result})
+            # parts = [response]
+            response = types.FunctionResponse(
+                name=function_name, response={"output": result}, scheduling="INTERRUPT", will_continue=True
+            )
+            parts = [types.Part(function_response=response)]
+            input_text = None
         elif input_text.startswith("metadata\n"):
             input_text = input_text.replace("metadata\n", "")
-            function_name = "wait_event"
+            function_name = "add_event_listener"
             timestamp = datetime.datetime.now().strftime("%Y/%m/%d_%H:%M:%S")
             result = {
                 "type": "message",
                 "timestamp": timestamp,
-                "author_name": message.author.display_name,
-                "content": input_text,
+                "from": message.author.display_name,
+                "body": input_text,
             }
-            response = types.Part.from_function_response(name=function_name, response={"output": result})
-            parts = [response]
+            # response = types.Part.from_function_response(name=function_name, response={"output": result})
+            response = types.FunctionResponse(
+                name=function_name, response={"output": result}, scheduling="WHEN_IDLE", will_continue=True
+            )
+            parts = [types.Part(function_response=response)]
             input_text = None
+        elif input_text == "complete":
+            input_text = None
+            function_name = "add_event_listener"
+            result = {}
+            # response = types.Part.from_function_response(name=function_name, response={"output": result})
+            response = types.FunctionResponse(
+                name=function_name, response={"output": result}, scheduling="SILENT", will_continue=False
+            )
+            parts = [types.Part(function_response=response)]
 
         # 生成された回答を順次送信する
         # 入力中表示のために１回分先に生成する

@@ -6,11 +6,13 @@ def declarations_without_wait_event():
 
 
 def declarations():
-    return declarations_without_wait_event().append(wait_event_declaration)
+    # return declarations_without_wait_event().append(wait_event_declaration)
+    return declarations_without_wait_event().append(add_event_listener_declaration)
 
 
 def functions():
-    return {"get_weather_forecast": get_weather_forecast, "wait_event": wait_event}
+    # return {"get_weather_forecast": get_weather_forecast, "wait_event": wait_event}
+    return {"get_weather_forecast": get_weather_forecast, "add_event_listener": add_event_listener}
 
 
 wait_event_declaration = {
@@ -21,6 +23,17 @@ wait_event_declaration = {
 
 def wait_event() -> dict[str, str]:
     raise Exception
+
+
+add_event_listener_declaration = {
+    "name": "add_event_listener",
+    "description": "ユーザーからのメッセージなどのイベント発生時の通知を有効化する。戻り値はイベントの種類と内容",
+    "behavior": "NON_BLOCKING",
+}
+
+
+def add_event_listener() -> dict[str, str]:
+    return {"status": "OK"}
 
 
 get_weather_forecast_declaration = {
@@ -39,7 +52,7 @@ def get_weather_forecast(location: str) -> dict[str, str | int]:
         if location in ["調布", "調布市"]:
             raise Exception("データ取得に失敗")
         else:
-            raise Exception("未対応の地域")
+            raise Exception("非対応の地域")
 
     temperature = random.randint(-10, 40)
 

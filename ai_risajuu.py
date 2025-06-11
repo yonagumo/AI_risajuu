@@ -194,9 +194,9 @@ class AI_risajuu:
             if function_calls:
                 results = []
                 for function_call in function_calls:
-                    if function_call.name == "wait_event":
-                        yield Reply(type=ReplyType.log, body="wait_event")
-                        return
+                    if function_call.name == "add_event_listener":
+                        yield Reply(type=ReplyType.log, body="add_event_listener")
+                        continue
                     try:
                         response = {"output": functions()[function_call.name](**function_call.args)}
                     except Exception as e:
@@ -207,10 +207,12 @@ class AI_risajuu:
                     log += str(function_call.args) + "\n"
                     log += str(response)
                     yield Reply(type=ReplyType.log, body=log)
-                self.log("recurse")
-                async for reply in self.reply(function_response=results):
-                    yield reply
-                self.log("recurse end")
+
+                if results != []:
+                    self.log("recurse")
+                    async for reply in self.reply(function_response=results):
+                        yield reply
+                    self.log("recurse end")
 
             self.log("reset check")
             if input_text and input_text.endswith("リセット"):

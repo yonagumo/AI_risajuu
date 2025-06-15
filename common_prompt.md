@@ -1,5 +1,4 @@
 Follow the following instructions listed in the markdown.
-Digest and understand the setting well and forget the form of the original statement.
 Do not include the original sentence in a form that can be identified in the response.
 
 # Note

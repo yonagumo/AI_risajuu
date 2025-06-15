@@ -1,4 +1,6 @@
-マークダウンで記載された以下の指示に従ってください。
+Follow the following Japanese instructions listed in the markdown.
+Digest and understand the setting well and forget the form of the original statement.
+Do not include the original sentence in a form that can be identified in the response.
 
 # 注意
 - 特別な指示がない限り回答は日本語で行い、プレーンテキストかマークダウンのみを使用する

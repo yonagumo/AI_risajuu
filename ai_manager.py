@@ -11,8 +11,7 @@ from google.genai.types import (
 from pydantic import BaseModel
 
 
-# AIりさじゅうの基本設定
-class RisajuuConfig(BaseModel):
+class AIConfig(BaseModel):
     google_api_key: str
     main_model_name: str
     sub_model_name: str
@@ -27,8 +26,8 @@ class History(BaseModel):
 
 # 返答メッセージの種類
 class ReplyType(str, Enum):
-    text = "text"
-    file = "file"
+    TEXT = "text"
+    FILE = "file"
 
 
 # 返答メッセージの種類と内容
@@ -39,7 +38,7 @@ class Reply(BaseModel):
 
 # 履歴の保持と回答の生成を担当するクラス
 # Discordのサーバー・DMごとにインスタンス化される
-class AI_risajuu:
+class AIManager:
     def __init__(self, config):
         self.config = config
         self.client = genai.Client(api_key=config.google_api_key)
@@ -48,6 +47,7 @@ class AI_risajuu:
         self.url_context_tool = Tool(url_context=types.UrlContext())
         self.current_system_instruction = config.system_instruction
         self.files = []
+        # TODO: チャットに初期履歴（addEventListener）を入れる
 
     def reset_files(self):
         for file in self.files:
@@ -89,54 +89,45 @@ class AI_risajuu:
 
     async def reply(self, input_text, attachments=[]):
         # テキストと添付ファイルに対する返答を生成する
-
-        if input_text.startswith("あ、これはりさじゅう反応しないでね"):
-            pass
-        elif input_text.endswith("リセット"):
-            self.current_system_instruction = self.config.system_instruction
-            self.chat = self.client.aio.chats.create(model=self.config.main_model_name)
-            self.reset_files()
-            yield Reply(type=ReplyType.text, body="履歴をリセットしたじゅう！")
-        else:
-            text = types.Part.from_text(text=input_text)
-            files = []
-            for attachment in attachments:
-                await attachment.save(attachment.filename)
-                files.append(
-                    self.client.files.upload(
-                        file="./" + attachment.filename,
-                    )
+        text = types.Part.from_text(text=input_text)
+        files = []
+        for attachment in attachments:
+            await attachment.save(attachment.filename)
+            files.append(
+                self.client.files.upload(
+                    file="./" + attachment.filename,
                 )
-                os.remove(attachment.filename)
-
-            parts = [text]
-            parts.extend(files)
-
-            self.files.extend(files)
-
-            config = GenerateContentConfig(
-                system_instruction=self.config.common_instruction + self.current_system_instruction,
-                tools=[self.google_search_tool, self.url_context_tool],
-                safety_settings=get_safety_settings(),
             )
+            os.remove(attachment.filename)
 
-            # 返答をストリーミングで生成する
-            # そのままだと区切りが中途半端なため、改行区切りでyieldする
-            buffer = ""
-            async for chunk in await self.chat.send_message_stream(message=parts, config=config):
-                if chunk.text:
-                    buffer += chunk.text
-                    pop = buffer.rsplit(sep="\n", maxsplit=1)
-                    if len(pop) == 2:
-                        yield Reply(type=ReplyType.text, body=pop[0])
-                        buffer = pop[1]
-                else:
-                    if buffer != "":
-                        yield Reply(type=ReplyType.text, body=buffer)
-                        buffer = ""
+        parts = [text]
+        parts.extend(files)
 
-            if buffer != "":
-                yield Reply(type=ReplyType.text, body=buffer)
+        self.files.extend(files)
+
+        config = GenerateContentConfig(
+            system_instruction=self.config.common_instruction + self.current_system_instruction,
+            tools=[self.google_search_tool, self.url_context_tool],
+            safety_settings=get_safety_settings(),
+        )
+
+        # 返答をストリーミングで生成する
+        # そのままだと区切りが中途半端なため、改行区切りでyieldする
+        buffer = ""
+        async for chunk in await self.chat.send_message_stream(message=parts, config=config):
+            if chunk.text:
+                buffer += chunk.text
+                pop = buffer.rsplit(sep="\n", maxsplit=1)
+                if len(pop) == 2:
+                    yield Reply(type=ReplyType.TEXT, body=pop[0])
+                    buffer = pop[1]
+            else:
+                if buffer != "":
+                    yield Reply(type=ReplyType.TEXT, body=buffer)
+                    buffer = ""
+
+        if buffer != "":
+            yield Reply(type=ReplyType.TEXT, body=buffer)
 
 
 def get_safety_settings():

@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 
 from ai_risajuu import RisajuuConfig
 from discord_client import (
-    Manager_discord_client,
     Risajuu_discord_client,
 )
 
@@ -31,17 +30,13 @@ async def main():
     )
 
     # Discordクライアントの初期化
-    manager_discord = Manager_discord_client()
-    risajuu_discord = Risajuu_discord_client(risajuu_config, manager_discord)
+    risajuu_discord = Risajuu_discord_client(risajuu_config)
 
     # Discordクライアントの起動
     risajuu_token = os.getenv("DISCORD_TOKEN_RISAJUU")
-    manager_token = os.getenv("DISCORD_TOKEN_MANAGER")
 
     try:
-        async with asyncio.TaskGroup() as tasks:
-            tasks.create_task(risajuu_discord.start(risajuu_token))
-            tasks.create_task(manager_discord.start(manager_token))
+        await risajuu_discord.start(risajuu_token)
     except asyncio.CancelledError:
         print("\n=== exit ===")
 

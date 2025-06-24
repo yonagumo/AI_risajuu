@@ -12,20 +12,6 @@ from pydantic import BaseModel
 from ai_risajuu import AI_risajuu, ReplyType
 
 
-class Manager_discord_client(discord.Client):
-    def __init__(self):
-        intents = discord.Intents.default()
-        super().__init__(intents=intents)
-
-    async def on_ready(self):
-        print(f"We have logged in as {self.user}")
-
-    async def logging(self, channel_id, message):
-        channel = self.get_channel(channel_id)
-        if channel:
-            await channel.send(f"```{message}```")
-
-
 # りさじゅうインスタンス辞書のキーのための現在の場所の種類
 class InstanceType(str, Enum):
     server = "server"
@@ -48,13 +34,12 @@ def split_message_text(text, chunk_size=1500):
 
 # Discordのイベントを監視するメインのクラス
 class Risajuu_discord_client(discord.Client):
-    def __init__(self, risajuu_config, manager):
+    def __init__(self, risajuu_config):
         # メッセージイベントのみ受信する設定
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(intents=intents)
 
-        self.manager = manager
         self.risajuu_config = risajuu_config
         self.risajuu_instance = {}
         self.targets = []
@@ -104,11 +89,11 @@ class Risajuu_discord_client(discord.Client):
         if is_target_message:
             if message.content == "thinking":
                 result = risajuu.toggle_thinking()
-                await self.manager.logging(message.channel.id, f"risajuu.include_thoughts: {result}")
+                await message.channel.send(f"```risajuu.include_thoughts: {result}```")
                 return
             elif message.content == "logging":
                 result = risajuu.toggle_logging()
-                await self.manager.logging(message.channel.id, f"risajuu.logging: {result}")
+                await message.channel.send(f"```risajuu.logging: {result}```")
                 return
 
         # リアクション付与と返信は並行して実行
@@ -137,11 +122,6 @@ class Risajuu_discord_client(discord.Client):
         # メッセージに返答する
 
         input_text = message.content
-
-        if input_text.startswith("呼び出し"):
-            await message.channel.send(f"お～い！{message.author.display_name}が呼んでるじゅう！")
-            await self.manager.logging(message.channel.id, f"{self.user}によって呼び出されました")
-            return
 
         if input_text.startswith("カスタム\n"):
             custom_instruction = input_text.replace("カスタム\n", "")
@@ -202,8 +182,7 @@ class Risajuu_discord_client(discord.Client):
                 for chunk in split_message_text(body):
                     await channel.send(f"```{chunk}```")
             case ReplyType.log:
-                await self.manager.logging(channel.id, body)
-                # await channel.send(f"```{body}```")
+                await channel.send(f"```{body}```")
             case ReplyType.file:
                 await channel.send(file=discord.File(body, filename=os.path.basename(body)))
                 os.remove(body)

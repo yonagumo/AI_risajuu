@@ -1,4 +1,6 @@
 import os
+import traceback
+from typing import Any
 
 from google import genai
 from google.genai import types
@@ -6,8 +8,8 @@ from google.genai.types import (
     GenerateContentConfig,
     GoogleSearch,
     Tool,
+    UrlContext,
 )
-from httpx import ReadTimeout
 from pydantic import BaseModel
 
 
@@ -32,23 +34,46 @@ class LLMChat:
         self.client = genai.Client(api_key=config.google_api_key)
         self.chat = self.client.aio.chats.create(model=config.main_model_name)
         self.google_search_tool = Tool(google_search=GoogleSearch())
-        self.url_context_tool = Tool(url_context=types.UrlContext())
+        self.url_context_tool = Tool(url_context=UrlContext())
+        # google_maps parameter is not supported in Gemini API.
+        # self.google_maps_tool = Tool(google_maps=GoogleMaps)
         self.current_system_instruction = config.system_instruction
         self.files = []
-        # TODO: チャットに初期履歴（addEventListener）を入れる
+        self.init_event_listener()
+
+    def init_event_listener(self):
+        empty_message = types.UserContent(types.Part.from_text(text=""))
+        self.add_history(empty_message)
+
+        # event = {
+        #     "type": "message",
+        #     "contents": ["timestamp", "author", "body"],
+        #     "description": "メッセージの送信日時・対話相手の名前・メッセージの本文を取得する",
+        # }
+        event = {"type": "message", "contents": ["timestamp", "author", "body"]}
+        # event = {"type": "message"}
+        function_call = types.Part.from_function_call(name="subscribe_event", args=event)
+        register = types.ModelContent(function_call)
+        self.add_history(register)
+
+    def reset(self):
+        self.current_system_instruction = self.config.system_instruction
+        self.chat = self.client.aio.chats.create(model=self.config.main_model_name)
+        # chat.reset_files()
+        self.init_event_listener()
 
     # def reset_files(self):
     #     for file in self.files:
     #         self.client.files.delete(name=file.name)
     #     self.files = []
 
-    def get_files(self) -> str:
+    def get_files(self) -> list[str]:
         # アップロード済みファイルのリストを取得
-        text = ""
+        files = []
         for file in self.client.files.list():
             meta = self.client.files.get(name=file.name)
-            text += f"・{file.name}: {meta}\n"
-        return text if text else "アップロード済みファイルはありません。"
+            files.append(f"・{file.name}: {meta}")
+        return files
 
     def import_history(self, json_str):
         # 履歴の読み込み
@@ -65,6 +90,11 @@ class LLMChat:
         # プロンプトのカスタム
         self.current_system_instruction = custom_instruction
 
+    def add_history(self, content: types.Content):
+        # チャットの履歴にコンテンツを追加
+        self.chat._comprehensive_history.append(content)
+        self.chat._curated_history.append(content)
+
     async def react(self, input_text):
         # リアクションをサブのモデルで生成
         emoji = await self.client.aio.models.generate_content(
@@ -74,12 +104,16 @@ class LLMChat:
         )
         return emoji.text.strip()
 
-    async def reply(self, input_text: str, attachments=[]):
+    async def reply(self, input_data: dict[str, Any], attachments=[]):
         # テキストと添付ファイルに対する返答を生成する
-        parts = []
-        if input_text:
-            # テキストがある場合はテキストをパーツに追加
-            parts.append(types.Part.from_text(text=input_text))
+
+        # parts = []
+        # if input_text:
+        #     # テキストがある場合はテキストをパーツに追加
+        #     parts.append(types.Part.from_text(text=input_text))
+
+        obj = types.Part.from_function_response(name="subscribe_event", response={"output": input_data})
+        parts = [obj]
 
         files = []
         for attachment in attachments:
@@ -95,10 +129,37 @@ class LLMChat:
 
         self.files.extend(files)
 
+        # GoogleSearchやURLContextとユーザー定義関数の併用ができなかった
+        # 最終的にはGoogleSearch, URLContextのほうを関数として分離するかも
+        # subscribe_event_declaration = {
+        #     "name": "subscribe_event",
+        #     "description": "イベント発生時の通知を有効化する。戻り値はイベントの種類と内容",
+        #     "parameters": {
+        #         "type": "object",
+        #         "properties": {
+        #             "type": {"type": "string", "description": "取得するイベントの種類"},
+        #             "contents": {"type": "array", "items": {"type": "string"}, "description": "取得するイベントの属性"},
+        #         },
+        #         "required": ["type"],
+        #     },
+        #     "response": {
+        #         "type": "object",
+        #         "properties": {
+        #             "timestamp": {"type": "string", "format": "date-time", "description": "メッセージの送信日時"},
+        #             "author": {"type": "string", "description": "メッセージの送信者"},
+        #             "body": {"type": "string", "description": "メッセージの本文"},
+        #         },
+        #     },
+        # }
+        # my_tools = Tool(function_declarations=[subscribe_event_declaration])
+        # function_calling_config = types.FunctionCallingConfig(mode=types.FunctionCallingConfigMode.NONE)
+
         # タイムアウトを１分に設定
         config = GenerateContentConfig(
             system_instruction=self.config.common_instruction + "\n" + self.current_system_instruction,
             tools=[self.google_search_tool, self.url_context_tool],
+            # tools=[my_tools],
+            # tool_config=types.ToolConfig(function_calling_config=function_calling_config),
             safety_settings=get_safety_settings(),
             http_options=types.HttpOptions(timeout=60000),
         )
@@ -121,6 +182,7 @@ class LLMChat:
                         yield buffer
                         buffer = ""
         except Exception as err:
+            traceback.print_exc()
             error = type(err)
         finally:
             if buffer != "":

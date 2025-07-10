@@ -3,6 +3,7 @@ import datetime
 import random
 import tempfile
 
+from google.genai import types
 from pydantic import BaseModel
 
 from .llm_chat import LLMChat, LLMConfig
@@ -96,22 +97,28 @@ class Risajuu:
             return
 
         if input.endswith("リセット"):
-            chat.current_system_instruction = chat.config.system_instruction
-            chat.chat = chat.client.aio.chats.create(model=chat.config.main_model_name)
-            # chat.reset_files()
+            chat.reset()
+            text = "履歴をリセットしたじゅう！"
             reply = TextReply(message=text)
             action = PostMessage(channel=message.channel, content=reply)
             await self.action_queue.put(action)
             return
 
         # if message.content == "file_list":
-        #     text = chat.get_files()
+        #     text = ""
+        #     for file in chat.get_files():
+        #         text += file + "\n"
+        #     if not text:
+        #         text = "アップロード済みファイルはありません。"
         #     reply = TextReply(message=text)
         #     action = PostMessage(channel=message.channel, content=reply)
         #     await self.action_queue.put(action)
         #     return
 
-        async for text in chat.reply(message.content, message.attachments):
+        timestamp = datetime.datetime.now().isoformat()
+        obj = {"timestamp": timestamp, "author": message.author.display_name, "body": input}
+
+        async for text in chat.reply(obj, message.attachments):
             if not isinstance(text, str):
                 text = f"Geminiライブラリのエラーじゅう：{text}"
             reply = TextReply(message=text)

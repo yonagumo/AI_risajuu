@@ -20,6 +20,7 @@ class DiscordClient(discord.Client):
         # メッセージイベントを受信するための設定
         intents = discord.Intents.default()
         intents.message_content = True
+        # intents = discord.Intents.all()
         super().__init__(intents=intents)
 
         self.config = config

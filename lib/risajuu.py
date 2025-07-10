@@ -1,7 +1,8 @@
 import asyncio
-import datetime
 import random
 import tempfile
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel
 
@@ -84,7 +85,7 @@ class Risajuu:
             await self.action_queue.put(action)
 
             json_str = chat.export_history()
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             prefix = f"risajuu_history_{timestamp}_"
             with tempfile.NamedTemporaryFile(
                 delete=False, suffix=".json", prefix=prefix, mode="w", encoding="utf-8"
@@ -105,7 +106,7 @@ class Risajuu:
             await self.action_queue.put(action)
             return
 
-        timestamp = datetime.datetime.now().isoformat()
+        timestamp = datetime.now(ZoneInfo("Asia/Tokyo")).isoformat()
         obj = {"timestamp": timestamp, "author": message.author.display_name, "body": input}
 
         async for text in chat.reply(obj, message.attachments):

@@ -35,8 +35,6 @@ class LLMChat:
         self.chat = self.client.aio.chats.create(model=config.main_model_name)
         self.google_search_tool = Tool(google_search=GoogleSearch())
         self.url_context_tool = Tool(url_context=UrlContext())
-        # google_maps parameter is not supported in Gemini API.
-        # self.google_maps_tool = Tool(google_maps=GoogleMaps)
         self.current_system_instruction = config.system_instruction
         self.files = []
         self.init_event_listener()
@@ -45,13 +43,7 @@ class LLMChat:
         empty_message = types.UserContent(types.Part.from_text(text=""))
         self.add_history(empty_message)
 
-        # event = {
-        #     "type": "message",
-        #     "contents": ["timestamp", "author", "body"],
-        #     "description": "メッセージの送信日時・対話相手の名前・メッセージの本文を取得する",
-        # }
         event = {"type": "message", "contents": ["timestamp", "author", "body"]}
-        # event = {"type": "message"}
         function_call = types.Part.from_function_call(name="subscribe_event", args=event)
         register = types.ModelContent(function_call)
         self.add_history(register)
@@ -59,13 +51,7 @@ class LLMChat:
     def reset(self):
         self.current_system_instruction = self.config.system_instruction
         self.chat = self.client.aio.chats.create(model=self.config.main_model_name)
-        # chat.reset_files()
         self.init_event_listener()
-
-    # def reset_files(self):
-    #     for file in self.files:
-    #         self.client.files.delete(name=file.name)
-    #     self.files = []
 
     def get_files(self) -> list[str]:
         # アップロード済みファイルのリストを取得
@@ -79,7 +65,6 @@ class LLMChat:
         # 履歴の読み込み
         history = History.model_validate_json(json_str)
         self.chat = self.client.aio.chats.create(model=self.config.main_model_name, history=history.contents)
-        # self.reset_files()
 
     def export_history(self):
         # 履歴の書き出し
@@ -105,15 +90,10 @@ class LLMChat:
         return emoji.text.strip()
 
     async def reply(self, input_data: dict[str, Any], attachments=[]):
-        # テキストと添付ファイルに対する返答を生成する
+        # メッセージと添付ファイルに対する返答を生成する
 
-        # parts = []
-        # if input_text:
-        #     # テキストがある場合はテキストをパーツに追加
-        #     parts.append(types.Part.from_text(text=input_text))
-
-        obj = types.Part.from_function_response(name="subscribe_event", response={"output": input_data})
-        parts = [obj]
+        part = types.Part.from_function_response(name="subscribe_event", response={"output": input_data})
+        parts = [part]
 
         files = []
         for attachment in attachments:
@@ -129,37 +109,10 @@ class LLMChat:
 
         self.files.extend(files)
 
-        # GoogleSearchやURLContextとユーザー定義関数の併用ができなかった
-        # 最終的にはGoogleSearch, URLContextのほうを関数として分離するかも
-        # subscribe_event_declaration = {
-        #     "name": "subscribe_event",
-        #     "description": "イベント発生時の通知を有効化する。戻り値はイベントの種類と内容",
-        #     "parameters": {
-        #         "type": "object",
-        #         "properties": {
-        #             "type": {"type": "string", "description": "取得するイベントの種類"},
-        #             "contents": {"type": "array", "items": {"type": "string"}, "description": "取得するイベントの属性"},
-        #         },
-        #         "required": ["type"],
-        #     },
-        #     "response": {
-        #         "type": "object",
-        #         "properties": {
-        #             "timestamp": {"type": "string", "format": "date-time", "description": "メッセージの送信日時"},
-        #             "author": {"type": "string", "description": "メッセージの送信者"},
-        #             "body": {"type": "string", "description": "メッセージの本文"},
-        #         },
-        #     },
-        # }
-        # my_tools = Tool(function_declarations=[subscribe_event_declaration])
-        # function_calling_config = types.FunctionCallingConfig(mode=types.FunctionCallingConfigMode.NONE)
-
         # タイムアウトを１分に設定
         config = GenerateContentConfig(
             system_instruction=self.config.common_instruction + "\n" + self.current_system_instruction,
             tools=[self.google_search_tool, self.url_context_tool],
-            # tools=[my_tools],
-            # tool_config=types.ToolConfig(function_calling_config=function_calling_config),
             safety_settings=get_safety_settings(),
             http_options=types.HttpOptions(timeout=60000),
         )

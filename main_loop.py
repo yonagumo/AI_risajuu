@@ -77,8 +77,8 @@ class MainLoop:
                 tg.create_task(self.wait_risajuu(risajuu))
                 tg.create_task(risajuu.boot())
 
+            # メッセージがターゲットチャンネルに送られたとき入力中表示を出す
             if info.is_target:
-                # メッセージがターゲットチャンネルに送られた場合
                 await info.message.channel.typing()
 
             # りさじゅうインスタンスにメッセージイベントを送信

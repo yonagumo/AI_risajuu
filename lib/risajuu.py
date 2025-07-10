@@ -3,7 +3,6 @@ import datetime
 import random
 import tempfile
 
-from google.genai import types
 from pydantic import BaseModel
 
 from .llm_chat import LLMChat, LLMConfig
@@ -24,9 +23,11 @@ class Risajuu:
         self.action_queue = asyncio.Queue()
 
     async def boot(self):
+        # りさじゅうがイベントを待機するループ
         while True:
             event: Event = await self.event_queue.get()
 
+            # Discordからのメッセージイベント
             if isinstance(event, DiscordMessage):
                 info: MessageInfo = event.info
                 self.tg.create_task(self.add_reaction(info))
@@ -46,7 +47,7 @@ class Risajuu:
             await self.action_queue.put(event)
 
     async def reply_to_message(self, info: MessageInfo):
-        # メッセージへの返答を生成してキューに登録する
+        # メッセージへの返答を生成してアクションキューに登録する
         message = info.message
         input = message.content
         chat = self.llm_chat
@@ -104,17 +105,6 @@ class Risajuu:
             await self.action_queue.put(action)
             return
 
-        # if message.content == "file_list":
-        #     text = ""
-        #     for file in chat.get_files():
-        #         text += file + "\n"
-        #     if not text:
-        #         text = "アップロード済みファイルはありません。"
-        #     reply = TextReply(message=text)
-        #     action = PostMessage(channel=message.channel, content=reply)
-        #     await self.action_queue.put(action)
-        #     return
-
         timestamp = datetime.datetime.now().isoformat()
         obj = {"timestamp": timestamp, "author": message.author.display_name, "body": input}
 
@@ -124,20 +114,3 @@ class Risajuu:
             reply = TextReply(message=text)
             action = PostMessage(channel=message.channel, content=reply)
             await self.action_queue.put(action)
-
-        # 生成された回答を順次送信する
-        # 入力中表示のために１回分先に生成する
-        # gen = chat.reply(message.content, message.attachments)
-        # print(message.content)
-        # try:
-        #     buffer = await gen.__anext__()
-        # except StopAsyncIteration:
-        #     pass
-        # else:
-        #     await self.event_queue.put(Event(type=EventType.REPLY_BEGIN, trigger=None, body=info.source))
-        #     async for reply in gen:
-        #         event = Event(type=EventType.RESPONSE, trigger=info, body=(buffer, True))
-        #         await self.event_queue.put(event)
-        #         buffer = reply
-        #     event = Event(type=EventType.RESPONSE, trigger=info, body=(buffer, False))
-        #     await self.event_queue.put(event)
